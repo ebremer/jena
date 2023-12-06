@@ -65,13 +65,70 @@
                     </div>
                   </div>
                   <div
+                    role="group"
+                    class="form-row form-group"
+                  >
+                    <h4 class="col-12 mt-2">
+                      Upload statuses
+                    </h4>
+                    <jena-table
+                      :fields="statusTableFields"
+                      :items="statusTableItems"
+                      bordered
+                      fixed
+                      hover
+                    >
+                      <template #cell(size)="data">
+                        {{ readableFileSize(data.item.size) }}
+                      </template>
+                      <template #cell(speed)="data">
+                        {{ readableFileSize(data.item.speed) }}/s
+                      </template>
+                      <template #cell(status)="data">
+                        <div class="progress">
+                          <div
+                            :class="`progress-bar bg-${getFileStatus(data.item)}`"
+                            :style="`width: ${data.item.progress}%`"
+                            :aria-valuenow="`${data.item.progress}`"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            role="progressbar"
+                          >
+                            {{ data.item.progress }}
+                          </div>
+                        </div>
+                        <span class="small">Triples uploaded:&nbsp;</span>
+                        <span v-if="data.item.response.tripleCount" class="small">
+                      {{ data.item.response.tripleCount }}
+                    </span>
+                        <span v-else class="small">0</span>
+                      </template>
+                      <template #cell(actions)="data">
+                        <button
+                          @click.prevent="data.item.success || data.item.error === 'compressing' ? false : $refs.upload.update(data.item, {active: true})"
+                          type="button"
+                          class="btn btn-outline-primary me-0 mb-2 d-block"
+                        >
+                          <FontAwesomeIcon icon="upload" />
+                          <span class="ms-2">upload now</span>
+                        </button>
+                        <button
+                          @click.prevent="remove(data.item)"
+                          type="button"
+                          class="btn btn-outline-primary me-0 mb-md-0 d-block d-md-inline-block"
+                        >
+                          <FontAwesomeIcon icon="minus-circle" />
+                          <span class="ms-2">remove</span>
+                        </button>
+                      </template>
+                    </jena-table>
+                  </div>
+                  <div
                     id="dataset-files"
                     role="group"
                     class="form-row form-group"
                   >
-                    <label
-                      class="col-sm-4 col-md-4 col-lg-2 col-12 col-form-label col-form-label-sm"
-                    >Files to upload</label>
+                    <h4>Files to upload</h4>
                     <div class="col has-validation">
                       <!-- eslint-disable vue/v-on-event-hyphenation -->
                       <file-upload
@@ -254,7 +311,27 @@ export default {
         //   name: ''
         // }
       },
-      datasetTableFields: [
+      statusTableFields: Object.freeze([
+        {
+          key: 'selected',
+          label: 'Selected',
+          sortable: true,
+          sortDirection: 'asc'
+        },
+        {
+          key: 'success',
+          label: 'Success',
+          sortable: true,
+          sortDirection: 'asc'
+        },
+        {
+          key: 'failure',
+          label: 'Failure',
+          sortable: true,
+          sortDirection: 'asc'
+        }
+      ]),
+      datasetTableFields: Object.freeze([
         {
           key: 'name',
           label: 'name',
@@ -279,11 +356,18 @@ export default {
           key: 'actions',
           label: 'actions'
         }
-      ]
+      ])
     }
   },
 
   computed: {
+    statusTableItems () {
+      const statuses = {'selected': 0, 'success': 0, 'failure': 0}
+      if (this.upload.files) {
+        statuses.selected = this.upload.files.length
+      }
+      return [statuses]
+    },
     datasetTableItems () {
       if (!this.upload.files) {
         return []
