@@ -54,6 +54,11 @@ import org.apache.jena.vocabulary.RDFS;
  * Base class to support the pretty forms of Turtle-related languages (Turtle, TriG)
  */
 public abstract class TurtleShell {
+    // RDF sequences: "( ... )" is a sequence term, not an abbreviation of rdf:first/rdf:rest
+    // triples. Legacy ladders are written as plain triples so that a round trip does not
+    // change the data model.
+    private static final boolean ABBREVIATE_LEGACY_LISTS = false;
+
     protected final IndentedWriter out;
     protected final NodeFormatter  nodeFmt;
     protected final PrefixMap      prefixMap;
@@ -859,11 +864,13 @@ public abstract class TurtleShell {
                         if ( sConn == 0 && containedInOneGraph(subj) )
                             // Not used as an object in this graph.
                             freeBnodes.add(subj);
-                    } else if ( subj.isTripleTerm() ) {
+                    } else if ( subj.isTripleTerm() || subj.isNodeSeq() ) {
                         extractBlankNodesInTripleTerms(blankNodesInTripleTerms, subj);
                     }
 
-                    if ( obj.isTripleTerm() ) {
+                    // RDF sequences: like a triple term, a sequence holds its blank nodes by
+                    // label, so they are not written nested or as free-standing [ ... ].
+                    if ( obj.isTripleTerm() || obj.isNodeSeq() ) {
                         extractBlankNodesInTripleTerms(blankNodesInTripleTerms, obj);
                         continue;
                     }
@@ -890,21 +897,18 @@ public abstract class TurtleShell {
         }
 
         // Helper for findBNodeSyntax1
+        // RDF sequences: also the blank nodes of a sequence term, at any depth.
         private void extractBlankNodesInTripleTerms(Set<Node> blankNodesInTripleTerms, Node nodeTriple) {
             // Needs to recurse.
-            Triple triple = nodeTriple.getTriple();
-            Node tSubj = triple.getSubject();
-            Node tObj = triple.getObject();
-
-            if ( tSubj.isBlank() )
-                blankNodesInTripleTerms.add(tSubj);
-            else if ( tSubj.isTripleTerm() )
-                extractBlankNodesInTripleTerms(blankNodesInTripleTerms, tSubj);
-
-            if ( tObj.isBlank() )
-                blankNodesInTripleTerms.add(tObj);
-            else if ( tObj.isTripleTerm() )
-                extractBlankNodesInTripleTerms(blankNodesInTripleTerms, tObj);
+            List<Node> parts = nodeTriple.isNodeSeq()
+                    ? nodeTriple.getSeq()
+                    : List.of(nodeTriple.getTriple().getSubject(), nodeTriple.getTriple().getObject());
+            for ( Node part : parts ) {
+                if ( part.isBlank() )
+                    blankNodesInTripleTerms.add(part);
+                else if ( part.isTripleTerm() || part.isNodeSeq() )
+                    extractBlankNodesInTripleTerms(blankNodesInTripleTerms, part);
+            }
         }
 
         // --- Lists setup
@@ -913,6 +917,8 @@ public abstract class TurtleShell {
          * (list head -> Elements map), list elements)
          */
         private void findLists() {
+            if ( ! ABBREVIATE_LEGACY_LISTS )
+                return;
             List<Triple> tails = triples(ANY, RDF_Rest, RDF_Nil);
             for ( Triple t : tails ) {
                 // Returns the elements, reversed.
@@ -1201,8 +1207,6 @@ public abstract class TurtleShell {
                 if ( nestedObjects.contains(n) )
                     return true;
             }
-            if ( RDF_Nil.equals(n) )
-                return true;
             return false;
         }
 
@@ -1214,8 +1218,6 @@ public abstract class TurtleShell {
                 writeList(lists.get(obj));
             else if ( nestedObjects.contains(obj) )
                 writeNestedObject(obj);
-            else if ( RDF_Nil.equals(obj) )
-                out.print("()");
             else
                 writeNode(obj);
             if ( nestedObjects.contains(obj) )

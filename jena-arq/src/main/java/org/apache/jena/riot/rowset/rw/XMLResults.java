@@ -48,6 +48,8 @@ public interface XMLResults
     public static final String dfLiteral    = "literal" ;
     public static final String dfTriple     = "triple" ;
     public static final String dfStatement  = "statement" ;
+    // RDF sequences: <seq> term term ... </seq>
+    public static final String dfSeq        = "seq" ;
     public static final String dfSubject    = "subject" ;
     public static final String dfProperty   = "property" ;
     public static final String dfObject     = "object" ;

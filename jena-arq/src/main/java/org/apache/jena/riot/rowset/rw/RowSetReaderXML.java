@@ -404,7 +404,7 @@ public class RowSetReaderXML implements RowSetReader {
         }
 
         private Node parseOneTerm(String tag) throws XMLStreamException {
-          // URI, literal, bNode, unbound, triple
+          // URI, literal, bNode, unbound, triple, (rdf-array) seq
           if ( isTag(tag, XMLResults.dfBNode) ) {
               String label = parser.getElementText() ;
               Node node = null ;
@@ -445,6 +445,26 @@ public class RowSetReaderXML implements RowSetReader {
               String uri = parser.getElementText() ;
               Node node = NodeFactory.createURI(uri) ;
               return node;
+          }
+
+          if ( isTag(tag, XMLResults.dfSeq) ) {
+              // RDF sequences: <seq> term term ... </seq>
+              List<Node> elements = new ArrayList<>();
+              while ( parser.nextTag() == XMLStreamConstants.START_ELEMENT ) {
+                  if ( isTag(parser.getLocalName(), XMLResults.dfUnbound) ) {
+                      // An empty slot.
+                      parser.nextTag();
+                      elements.add(Node.UNDEF);
+                      continue;
+                  }
+                  Node x = parseOneTerm(parser.getLocalName());
+                  if ( x == null )
+                      staxError("Bad term in <seq>");
+                  elements.add(x);
+              }
+              if ( ! parser.getLocalName().equals(XMLResults.dfSeq) )
+                  staxError("Expecting </seq>: "+parser.getLocalName());
+              return NodeFactory.createSeqNode(elements);
           }
 
           if ( isTag(tag, XMLResults.dfTriple) || isTag(tag, XMLResults.dfStatement) ) {

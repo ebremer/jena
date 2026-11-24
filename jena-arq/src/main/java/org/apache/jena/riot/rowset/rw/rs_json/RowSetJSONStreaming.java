@@ -28,6 +28,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
@@ -453,6 +454,19 @@ public class RowSetJSONStreaming<E> extends IteratorSlotted<Binding> implements 
             Node o = parseOneTerm(jo, labelMap, onUnknownRdfTermType);
 
             result = NodeFactory.createTripleTerm(s, p, o);
+            break;
+        case kSeq:
+            // RDF sequences: { "type": "seq", "value": [ term, term, ... ] }
+            List<Node> elements = new ArrayList<>();
+            for (JsonElement e : valueJson.getAsJsonArray()) {
+                // An empty slot: { "type": "undef" }
+                JsonElement eType = e.getAsJsonObject().get(kType);
+                if (eType != null && kUnbound.equals(eType.getAsString()))
+                    elements.add(Node.UNDEF);
+                else
+                    elements.add(parseOneTerm(e, labelMap, onUnknownRdfTermType));
+            }
+            result = NodeFactory.createSeqNode(elements);
             break;
         default:
             if (onUnknownRdfTermType != null) {

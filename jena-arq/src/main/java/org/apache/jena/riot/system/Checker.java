@@ -76,6 +76,15 @@ public class Checker {
             return check(t.getSubject()) && check(t.getPredicate()) && check(t.getObject())
                     && checkTriple(t);
         }
+        else if ( node.isNodeSeq() ) {
+            for ( Node elt : node.getSeq() ) {
+                if ( elt.isNodeUndef() )
+                    continue;
+                if ( ! check(elt, errorHandler, line, col) )
+                    return false;
+            }
+            return true;
+        }
         errorHandler(errorHandler).warning("Not a recognized node: ", line, col);
         return false;
     }
@@ -304,16 +313,16 @@ public class Checker {
     public static boolean checkTriple(Node subject, Node predicate, Node object, ErrorHandler errorHandler, long line, long col) {
         boolean rc = true;
 
-        if ( subject == null || (!subject.isURI() && !subject.isBlank()) ) {
-            errorHandler(errorHandler).error("Subject is not a URI or blank node", line, col);
+        if ( subject == null || (!subject.isURI() && !subject.isBlank() && !subject.isNodeSeq()) ) {
+            errorHandler(errorHandler).error("Subject is not a URI, blank node or sequence", line, col);
             rc = false;
         }
         if ( predicate == null || (!predicate.isURI()) ) {
             errorHandler(errorHandler).error("Predicate not a URI", line, col);
             rc = false;
         }
-        if ( object == null || (!object.isURI() && !object.isBlank() && !object.isLiteral()) ) {
-            errorHandler(errorHandler).error("Object is not a URI, blank node or literal", line, col);
+        if ( object == null || (!object.isURI() && !object.isBlank() && !object.isLiteral() && !object.isNodeSeq()) ) {
+            errorHandler(errorHandler).error("Object is not a URI, blank node, literal or sequence", line, col);
             rc = false;
         }
         return rc;

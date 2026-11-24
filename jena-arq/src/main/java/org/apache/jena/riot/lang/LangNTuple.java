@@ -21,7 +21,9 @@
 
 package org.apache.jena.riot.lang;
 
+import java.util.ArrayList;
 import java.util.Iterator ;
+import java.util.List;
 
 import org.apache.jena.graph.Node ;
 import org.apache.jena.graph.NodeFactory;
@@ -147,6 +149,10 @@ public abstract class LangNTuple<X> extends LangBase implements Iterator<X>
         Token sToken = nextToken();
         if ( sToken.isEOF() )
             exception(sToken, "Premature end of file: %s", sToken);
+        // rdf-array: a sequence parses as a subject, as jena-array has it; the
+        // data model of 2026-11-03 forbids one there, and a checker may refuse it.
+        if ( sToken.hasType(TokenType.LPAREN) )
+            return parseNestedSeqTerm();
         checkIRIOrBNode(sToken);
         Node s = tokenAsNode(sToken);
         return s;
@@ -180,6 +186,9 @@ public abstract class LangNTuple<X> extends LangBase implements Iterator<X>
             try {
                 term = parseTripleTerm();
             } finally { nestingDepth-- ; }
+        } else if ( token.hasType(TokenType.LPAREN) ) {
+            // rdf-array: "( e1 e2 … )" is one sequence term.
+            term = parseNestedSeqTerm();
         } else {
             checkRDFTerm(posn, token);
             term = tokenAsNode(token);
@@ -194,6 +203,46 @@ public abstract class LangNTuple<X> extends LangBase implements Iterator<X>
         if ( x.getType() != TokenType.R_TRIPLE )
             exception(x, "Triple term not terminated by )>>: %s", x);
         return NodeFactory.createTripleTerm(t);
+    }
+
+    // Looking at "(" (LPAREN): a sequence term, under the nesting limit triple terms have.
+    private Node parseNestedSeqTerm() {
+        if ( nestingDepth >= recursionLimit )
+            exception(peekToken(), "Recursion limit exceeded for sequences ("+nestingDepth+")");
+        nestingDepth++;
+        try {
+            return parseSeqTerm();
+        } finally { nestingDepth-- ; }
+    }
+
+    // Looking at "(" (LPAREN) : a sequence term "( element* )".
+    final protected Node parseSeqTerm() {
+        List<Node> elements = new ArrayList<>();
+        for (;;) {
+            Token t = nextToken();
+            if ( t.isEOF() )
+                exception(t, "Premature end of file in sequence: %s", t);
+            if ( t.hasType(TokenType.RPAREN) )
+                return profile.createSeqNode(elements, t.getLine(), t.getColumn());
+            elements.add(parseSeqElement(t));
+        }
+    }
+
+    private Node parseSeqElement(Token t) {
+        if ( t.hasType(TokenType.L_TRIPLE) ) {
+            if ( nestingDepth >= recursionLimit )
+                exception(t, "Recursion limit exceeded for triple terms ("+nestingDepth+")");
+            nestingDepth++;
+            try {
+                return parseTripleTerm();
+            } finally { nestingDepth-- ; }
+        }
+        if ( t.hasType(TokenType.LPAREN) )
+            return parseNestedSeqTerm();
+        if ( t.hasType(TokenType.KEYWORD) && "undef".equalsIgnoreCase(t.getImage()) )
+            return Node.UNDEF;
+        checkRDFTerm("sequence element", t);
+        return tokenAsNode(t);
     }
 
     protected final void checkIRIOrBNode(Token token) {

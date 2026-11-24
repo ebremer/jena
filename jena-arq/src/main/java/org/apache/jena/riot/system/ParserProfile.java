@@ -23,7 +23,10 @@ package org.apache.jena.riot.system;
 
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.graph.Graph;
+import java.util.List;
+
 import org.apache.jena.graph.Node;
+import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.irix.IRIx;
 import org.apache.jena.riot.tokens.Token;
@@ -82,6 +85,11 @@ public interface ParserProfile {
 
     /** Create a triple node (RDF-1.2) */
     public Node createTripleTerm(Triple triple, long line, long col);
+
+    /** Create a sequence term from its elements, in order. */
+    public default Node createSeqNode(List<Node> elements, long line, long col) {
+        return NodeFactory.createSeqNode(elements);
+    }
 
     /** Create a graph node. This is an N3-formula, not a named graph. */
     public Node createGraphNode(Graph graph, long line, long col);
