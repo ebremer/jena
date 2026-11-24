@@ -21,6 +21,8 @@
 
 package org.apache.jena.graph;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
@@ -505,6 +507,11 @@ public class TestNode {
             }
 
             @Override
+            public Object visitSeq(Node_Seq it, List<Node> elements) {
+                return it;
+            }
+
+            @Override
             public Object visitGraph(Node_Graph it, Graph graph) {
                 return it;
             }
@@ -580,6 +587,12 @@ public class TestNode {
             }
 
             @Override
+            public Object visitSeq(Node_Seq it, List<Node> elements) {
+                assertEquals(it.getSeq(), elements);
+                return null;
+            }
+
+            @Override
             public Object visitGraph(Node_Graph it, Graph graph) {
                 assertEquals(it.getGraph(), graph);
                 return null;
@@ -629,6 +642,12 @@ public class TestNode {
             @Override
             public Object visitTriple(Node_Triple it, Triple triple) {
                 strings[0] += " termTriple";
+                return null;
+            }
+
+            @Override
+            public Object visitSeq(Node_Seq it, List<Node> elements) {
+                strings[0] += " termSeq";
                 return null;
             }
 

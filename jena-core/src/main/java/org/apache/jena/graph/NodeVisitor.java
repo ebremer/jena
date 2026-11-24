@@ -21,6 +21,8 @@
 
 package org.apache.jena.graph;
 
+import java.util.List;
+
 import org.apache.jena.datatypes.RDFDatatype;
 
 /**
@@ -36,4 +38,6 @@ public interface NodeVisitor
     Object visitVariable( Node_Variable it, String name );
     Object visitTriple( Node_Triple it, Triple triple);
     Object visitGraph( Node_Graph it, Graph graph);
+    Object visitSeq( Node_Seq it, List<Node> elements);
+    default Object visitUndef( Node_Undef it ) { return null; }
     }

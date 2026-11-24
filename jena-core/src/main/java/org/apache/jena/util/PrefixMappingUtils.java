@@ -148,6 +148,10 @@ public class PrefixMappingUtils {
             process(node.getTriple(), inUse, trie);
             return ;
         }
+        else if ( node.isNodeSeq() ) {
+            node.getSeq().forEach(n->process(n, inUse, trie));
+            return ;
+        }
         else
             return;
         // Get all prefixes whose URIs are candidates
@@ -239,6 +243,10 @@ public class PrefixMappingUtils {
             uri = node.getLiteralDatatypeURI();
         else if ( node.isTripleTerm() ) {
             processTTL(node.getTriple(), inUse, prefixMapping);
+            return ;
+        }
+        else if ( node.isNodeSeq() ) {
+            node.getSeq().forEach(n->processTTL(n, inUse, prefixMapping));
             return ;
         }
         else {

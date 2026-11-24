@@ -25,6 +25,8 @@ package org.apache.jena.graph;
 import static org.apache.jena.atlas.lib.Lib.isEmpty;
 import static org.apache.jena.langtagx.LangTagX.formatLanguageTag;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 import org.apache.jena.datatypes.RDFDatatype;
@@ -314,6 +316,16 @@ public class NodeFactory {
     /** Create a triple term */
     public static Node createTripleTerm(Triple triple) {
         return new Node_Triple(triple);
+    }
+
+    /** Create a sequence term from its elements, in order. */
+    public static Node createSeqNode(List<Node> elements) {
+        return new Node_Seq(elements);
+    }
+
+    /** Create a sequence term from its elements, in order. */
+    public static Node createSeqNode(Node... elements) {
+        return new Node_Seq(Arrays.asList(elements));
     }
 
     /** Create a graph node. This is an N3-formula; it is not a named graph (see "quad") */

@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.ObjectStreamException;
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.List;
 import java.util.function.Function;
 
 import org.apache.jena.datatypes.RDFDatatype ;
@@ -57,6 +58,11 @@ public abstract class Node implements Serializable {
     public static final Node ANY = Node_ANY.nodeANY;
 
     /**
+     * The empty slot of a sequence. See {@link Node_Undef}.
+     */
+    public static final Node UNDEF = Node_Undef.nodeUndef;
+
+    /**
      * The string used when a literal does not have a language tag.
      * Accessing the language of a non-literal will throw an exception.
      * @see Util#hasLang(Node)
@@ -78,6 +84,8 @@ public abstract class Node implements Serializable {
     protected static final int hashNodeTriple   = 27;
     protected static final int hashExt          = 26;
     protected static final int hashBNode        = 25;
+    protected static final int hashNodeSeq      = 24;
+    protected static final int hashNodeUndef    = 23;
 
     /**
      * Visit a Node and dispatch on it to the appropriate method from the NodeVisitor
@@ -129,6 +137,13 @@ public abstract class Node implements Serializable {
      * to named graphs.
      */
     public boolean isNodeGraph()
+    { return false; }
+
+    /**
+     * Answer true iff this node is a sequence term: an ordered collection of RDF
+     * terms that is itself an RDF term. See {@link Node_Seq}.
+     */
+    public boolean isNodeSeq()
     { return false; }
 
     /** Extension node. Typically used in data structures based on triples.*/
@@ -233,6 +248,14 @@ public abstract class Node implements Serializable {
     /** Get the graph for a graph term (N3 formula), otherwise die horribly */
     public Graph getGraph()
     { throw new UnsupportedOperationException( "this (" + this.getClass() + ") is not a graph-valued node" ); }
+
+    /** Get the elements of a sequence term, otherwise die horribly */
+    /** Answer true iff this is the empty slot of a sequence. See {@link Node_Undef}. */
+    public boolean isNodeUndef()
+        { return false; }
+
+    public List<Node> getSeq()
+    { throw new UnsupportedOperationException( "this (" + this.getClass() + ") is not a sequence node" ); }
 
     /** answer true iff this node is a URI node with the given URI */
     public boolean hasURI( String uri )

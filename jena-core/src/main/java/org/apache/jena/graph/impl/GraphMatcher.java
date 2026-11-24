@@ -61,6 +61,9 @@ public class GraphMatcher extends java.lang.Object {
     }
 
     static public int hashCode(Graph g) {
+        // rdf-array: hash a sequence holding blank nodes by its unfolded form, as match() compares it.
+        if ( hasBlankInSequence(g) )
+            g = unfoldSequences(g, new HashSet<>());
     	ClosableIterator<Triple> ci = GraphUtil.findAll( g );
     	int hash = 0;
     	GraphMatcher gm = new GraphMatcher(g);
@@ -82,7 +85,83 @@ public class GraphMatcher extends java.lang.Object {
             <code>m2</code>.
  */
     static public Node[][] match(Graph m1,Graph m2)  {
-            return new GraphMatcher(m1).match(new GraphMatcher(m2));
+        // rdf-array: a sequence term holding blank nodes is compared by unfolding it, in both
+        // graphs, into a ladder of fresh blank nodes in a private vocabulary, so that its blank
+        // nodes are mapped like any others. The ladder cells are dropped from the mapping.
+        if ( hasBlankInSequence(m1) || hasBlankInSequence(m2) ) {
+            Set<Node> cells = new HashSet<>();
+            Graph g1 = unfoldSequences(m1, cells);
+            Graph g2 = unfoldSequences(m2, cells);
+            Node[][] pairs = new GraphMatcher(g1).match(new GraphMatcher(g2));
+            if ( pairs == null )
+                return null;
+            return Arrays.stream(pairs).filter(pair -> !cells.contains(pair[0])).toArray(Node[][]::new);
+        }
+        return new GraphMatcher(m1).match(new GraphMatcher(m2));
+    }
+
+    // rdf-array: the private vocabulary of unfolded sequences (as in rdf-test-suite-array).
+    private static final Node seqFirst = NodeFactory.createURI("urn:rdf-array:sequence#first");
+    private static final Node seqRest = NodeFactory.createURI("urn:rdf-array:sequence#rest");
+    private static final Node seqNil = NodeFactory.createURI("urn:rdf-array:sequence#nil");
+
+    private static boolean hasBlank(Node n) {
+        if ( n.isBlank() )
+            return true;
+        if ( n.isNodeSeq() ) {
+            for ( Node e : n.getSeq() )
+                if ( hasBlank(e) )
+                    return true;
+        }
+        return false;
+    }
+
+    private static boolean hasBlankInSequence(Graph g) {
+        ClosableIterator<Triple> iter = GraphUtil.findAll(g);
+        try {
+            while ( iter.hasNext() ) {
+                Triple t = iter.next();
+                if ( (t.getSubject().isNodeSeq() && hasBlank(t.getSubject()))
+                     || (t.getObject().isNodeSeq() && hasBlank(t.getObject())) )
+                    return true;
+            }
+            return false;
+        } finally { iter.close(); }
+    }
+
+    /** A copy of {@code g} with each sequence holding a blank node unfolded; the cells made are added to {@code cells}. */
+    private static Graph unfoldSequences(Graph g, Set<Node> cells) {
+        Graph out = GraphMemFactory.createDefaultGraph();
+        Map<Node, Node> heads = new HashMap<>();
+        ClosableIterator<Triple> iter = GraphUtil.findAll(g);
+        try {
+            while ( iter.hasNext() ) {
+                Triple t = iter.next();
+                out.add(Triple.create(unfold(t.getSubject(), out, heads, cells), t.getPredicate(),
+                                      unfold(t.getObject(), out, heads, cells)));
+            }
+        } finally { iter.close(); }
+        return out;
+    }
+
+    // The same sequence term (by its elements) is one head, as it is one term.
+    private static Node unfold(Node n, Graph out, Map<Node, Node> heads, Set<Node> cells) {
+        if ( !n.isNodeSeq() || !hasBlank(n) )
+            return n;
+        Node head = heads.get(n);
+        if ( head != null )
+            return head;
+        List<Node> elts = n.getSeq();
+        Node rest = seqNil;
+        for ( int i = elts.size()-1 ; i >= 0 ; i-- ) {
+            Node cell = NodeFactory.createBlankNode();
+            cells.add(cell);
+            out.add(Triple.create(cell, seqFirst, unfold(elts.get(i), out, heads, cells)));
+            out.add(Triple.create(cell, seqRest, rest));
+            rest = cell;
+        }
+        heads.put(n, rest);
+        return rest;
     }
     /* NOTE: inner classes
      *    We use a number of non-static inner classes, these all
