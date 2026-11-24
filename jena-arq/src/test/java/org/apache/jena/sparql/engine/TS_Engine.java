@@ -30,6 +30,9 @@ import org.junit.platform.suite.api.Suite;
       , TestQueryEngineFromContext.class
       , TestQueryEngine.class
       , TestJsonEval.class
+      , TestSequenceQueries.class
+      , TestUndefSlots.class
+      , TestArraySyntaxExamples.class
 })
 
 public class TS_Engine {}

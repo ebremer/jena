@@ -165,9 +165,9 @@ public class Manifest
             includedFiles.add(r.getURI());
             return;
         }
-        if ( !r.isBlank() )
+        if ( !r.isBlank() && !r.isNodeSeq() )
             return;
-        // Blank node - assumed to be a list.
+        // A blank node - assumed to be a list - or (rdf-array) a sequence term.
         List<Node> includes = G.listMembers(manifestGraph, r);
         for ( Node inc : includes ) {
             if ( inc.isBlank() || inc.isURI() ) {

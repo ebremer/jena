@@ -29,6 +29,8 @@ import org.junit.platform.suite.api.Suite;
 
 import org.apache.jena.atlas.TC_Atlas_ARQ;
 import org.apache.jena.atlas.legacy.BaseTest2;
+import org.apache.jena.external.Scripts_RdfArrayContrib;
+import org.apache.jena.external.Scripts_RdfArrayContribSPARQL;
 import org.apache.jena.riot.*;
 import org.apache.jena.riot.lang.rdfxml.Scripts_ARP1_RDFXML;
 import org.apache.jena.riot.lang.rdfxml.Scripts_RRX11;
@@ -79,7 +81,10 @@ import org.apache.jena.system.TC_System;
     Scripts_ARQ.class,
 
     // Composite datatypes extension
-    Scripts_CDTs.class
+    Scripts_CDTs.class,
+    // rdf-array: rdf-tests-contrib
+    Scripts_RdfArrayContrib.class,
+    Scripts_RdfArrayContribSPARQL.class
 
     // Only runs when src-examples is a source folder, which it isn't in the build.
     //, org.apache.jena.arq.examples.TC_Examples.class

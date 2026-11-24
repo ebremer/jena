@@ -154,6 +154,12 @@ public class SparqlTests {
             }
         }
 
+        // rdf-array: the SPARQL-array of rdf-tests-contrib -- gap patterns, UNNEST and the
+        // sequence functions -- is ARQ syntax here, as other ARQ extensions are.
+        String manifestFile = entry.getManifest().getFileName();
+        if ( manifestFile != null && manifestFile.replace('\\', '/').contains("/rdf-tests-contrib/") )
+            sparqlSyntax = Syntax.syntaxARQ;
+
         // --
 
         // Now dispatch on testType, with setting by syntax.

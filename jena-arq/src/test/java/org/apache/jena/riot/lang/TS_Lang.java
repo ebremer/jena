@@ -41,6 +41,7 @@ import org.apache.jena.atlas.legacy.BaseTest2;
     , TestLangNQuads.class
     , TestLangTurtle.class
     , TestLangTrig.class
+    , TestLangSequences.class
     , TestLangRdfJson.class
 
     , TestLangJsonLD.class
