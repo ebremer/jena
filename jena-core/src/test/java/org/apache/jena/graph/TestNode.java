@@ -844,4 +844,37 @@ public class TestNode {
     private String expand(String s) {
         return PrefixMapping.Extended.expandPrefix(s);
     }
+
+    // rdf-array: a sequence over a list it does not copy, for stores that decode on demand.
+
+    @Test
+    public void testSeqViewEqualsCopiedSeq() {
+        Node a = NodeFactory.createURI("http://example/a");
+        Node one = NodeFactory.createLiteralDT("1", XSDDatatype.XSDinteger);
+        Node copied = NodeFactory.createSeqNode(List.of(a, Node.UNDEF, one));
+        java.util.concurrent.atomic.AtomicInteger reads = new java.util.concurrent.atomic.AtomicInteger();
+        List<Node> lazy = new java.util.AbstractList<Node>() {
+            private final List<Node> elts = List.of(a, Node.UNDEF, one);
+            @Override public Node get(int i) { reads.incrementAndGet(); return elts.get(i); }
+            @Override public int size() { return elts.size(); }
+        };
+        class LazyList extends java.util.AbstractList<Node> implements java.util.RandomAccess {
+            @Override public Node get(int i) { return lazy.get(i); }
+            @Override public int size() { return lazy.size(); }
+        }
+        Node view = NodeFactory.createSeqNodeView(new LazyList());
+        assertTrue(view.isNodeSeq());
+        assertEquals(3, view.getSeq().size());
+        assertEquals(0, reads.get(), "size() reads no element");
+        assertEquals(one, view.getSeq().get(2));
+        assertEquals(1, reads.get(), "get(i) reads one element");
+        assertEquals(copied, view);
+        assertEquals(copied.hashCode(), view.hashCode());
+    }
+
+    @Test
+    public void testSeqViewNeedsRandomAccess() {
+        assertThrows(IllegalArgumentException.class,
+                     () -> NodeFactory.createSeqNodeView(new java.util.LinkedList<>(List.of(Node.UNDEF))));
+    }
 }

@@ -323,6 +323,18 @@ public class NodeFactory {
         return new Node_Seq(elements);
     }
 
+    /**
+     * Create a sequence term over {@code elements} without copying them, for a store that
+     * decodes elements when they are read: {@code size()} and {@code get(i)} then cost only
+     * what they touch. The caller guarantees what {@link #createSeqNode(List)} checks: the
+     * list is unmodifiable and never changes, holds no {@code null}, and is
+     * {@link java.util.RandomAccess} (checked). {@code equals} and {@code hashCode} read every
+     * element, as for any sequence.
+     */
+    public static Node createSeqNodeView(List<Node> elements) {
+        return Node_Seq.view(elements);
+    }
+
     /** Create a sequence term from its elements, in order. */
     public static Node createSeqNode(Node... elements) {
         return new Node_Seq(Arrays.asList(elements));

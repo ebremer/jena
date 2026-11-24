@@ -47,6 +47,17 @@ public class Node_Seq extends Node {
         this.elements = List.copyOf(elements);
     }
 
+    /** A sequence over {@code elements} as given, not copied: see {@link NodeFactory#createSeqNodeView}. */
+    private Node_Seq(List<Node> elements, boolean view) {
+        this.elements = Objects.requireNonNull(elements, "elements");
+    }
+
+    /*package*/ static Node_Seq view(List<Node> elements) {
+        if ( !(elements instanceof java.util.RandomAccess) )
+            throw new IllegalArgumentException("A sequence view needs a RandomAccess list");
+        return new Node_Seq(elements, true);
+    }
+
     /** The elements, in order. The list is unmodifiable. */
     @Override
     public List<Node> getSeq() {
