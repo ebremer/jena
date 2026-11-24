@@ -190,6 +190,9 @@ public class StatementImpl extends StatementBase implements Statement {
             return new LiteralImpl(n, g);
         if ( n.isTripleTerm() )
             return new StatementTermImpl(n, g);
+        // rdf-array: a sequence term surfaces as a resource whose node is the sequence.
+        if ( n.isNodeSeq() )
+            return new ResourceImpl(n, g);
         if (Node.ANY.equals(n) )
             return new ResourceImpl(n, g);
         throw new JenaException("Node type not compatible with Model: "+n);
