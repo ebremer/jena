@@ -23,6 +23,7 @@
 package org.apache.jena.sparql.lang.sparql_12.javacc ;
 
 /** Token Manager Error. */
+@SuppressWarnings("all") 
 public class TokenMgrError extends Error
 {
 
@@ -126,7 +127,7 @@ public class TokenMgrError extends Error
     return("Lexical error at line " + //
           errorLine + ", column " + //
           errorColumn + ".  Encountered: " + //
-          (EOFSeen ? "<EOF>" : ("'" + addEscapes(String.valueOf(curChar)) + "' (" + curChar + "),")) + //
+          (EOFSeen ? "<EOF>" : ("'" + addEscapes(String.valueOf((char) curChar)) + "' (" + curChar + "),")) + //
           (errorAfter == null || errorAfter.length() == 0 ? "" : " after prefix \"" + addEscapes(errorAfter) + "\"")) + //
           (lexState == 0 ? "" : " (in lexical state " + lexState + ")");
   }
@@ -164,4 +165,4 @@ public class TokenMgrError extends Error
     this(LexicalErr(EOFSeen, lexState, errorLine, errorColumn, errorAfter, curChar), reason);
   }
 }
-/* JavaCC - OriginalChecksum=ecfb730f793605a36c8fa7a94db13dfd (do not edit this line) */
+/* JavaCC - OriginalChecksum=370c9681458e53108f3655e9a6fd3fe8 (do not edit this line) */

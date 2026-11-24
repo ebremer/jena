@@ -21,6 +21,10 @@
 
 package org.apache.jena.sparql.lang;
 
+import org.apache.jena.sparql.core.Node_SeqGap;
+
+import java.util.List;
+
 import java.math.BigInteger;
 import java.util.HashSet;
 import java.util.Set;
@@ -521,6 +525,23 @@ public class QueryParserBase {
             return ((P_Link)path).getNode();
         throwParseException("Only simple paths allowed with reifier syntax", line, column);
         return null;
+    }
+
+    // RDF sequences: "( e1 e2 )" is a sequence term.
+    protected Node createSeqNode(List<Node> elements, int line, int column) {
+        return NodeFactory.createSeqNode(elements);
+    }
+
+    // RDF sequences: a gap "..." in a sequence pattern matches any run of members.
+    protected Node createSeqGapNode(int line, int column) {
+        return Node_SeqGap.create();
+    }
+
+    // RDF sequences: a named gap "...?rest" matches any run of members and binds the
+    // variable to that run, as a sequence. The token image is "..." followed by the variable.
+    protected Node createSeqGapNode(String image, int line, int column) {
+        String varName = image.substring(4);   // "...?" or "...$"
+        return Node_SeqGap.create(Var.alloc(varName));
     }
 
     protected Expr createExprExists(Element element) {

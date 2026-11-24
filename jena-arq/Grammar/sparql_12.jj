@@ -51,6 +51,8 @@ PARSER_BEGIN(SPARQLParser12)
  *   SPDX-License-Identifier: Apache-2.0
  */
 package org.apache.jena.sparql.lang.sparql_12.javacc ;
+import java.util.ArrayList ;
+import java.util.List ;
 import org.apache.jena.graph.* ;
 import org.apache.jena.query.* ;
 import org.apache.jena.sparql.core.Var ;
@@ -572,7 +574,9 @@ Element GroupGraphPatternSub() : { Element el = null ; }
     { startTriplesBlock() ; }
     el = TriplesBlock(null)
     { endTriplesBlock() ;
-      elg.addElement(el) ; }
+      // RDF sequences: a bare collection subject with no properties adds no triples.
+      if ( ! ((ElementPathBlock)el).isEmpty() )
+        elg.addElement(el) ; }
   )?
   (
     el = GraphPatternNotTriples()
@@ -582,7 +586,8 @@ Element GroupGraphPatternSub() : { Element el = null ; }
       { startTriplesBlock() ; }
       el = TriplesBlock(null)
       { endTriplesBlock() ;
-        elg.addElement(el) ; }
+        if ( ! ((ElementPathBlock)el).isEmpty() )
+          elg.addElement(el) ; }
     )?
   )*
       { endGroup(elg) ; }
@@ -627,6 +632,8 @@ Element GraphPatternNotTriples() : { Element el = null ; }
  |
    el = Bind()
  |
+   el = Unnest()
+ |
    el = InlineData()
  )
  { return el ; }
@@ -660,6 +667,19 @@ Element Bind() : { Var v ; Expr expr ; }
   v = Var()
   <RPAREN>
   { return new ElementBind(v, expr) ; }
+}
+// RDF sequences: UNNEST(expr AS ?x AT ?i) - one solution per member of a sequence,
+// ?x bound to the member and ?i (optional) to its 1-based position.
+Element Unnest() : { Var v ; Var posVar = null ; Expr expr ; }
+{
+  <UNNEST>
+  <LPAREN>
+  expr = Expression()
+  <AS>
+  v = Var()
+  ( <AT_KW> posVar = Var() )?
+  <RPAREN>
+  { return new ElementUnnest(expr, v, posVar) ; }
 }
 Element InlineData() : { ElementData el ; Token t ; }
 {
@@ -844,6 +864,25 @@ Args ArgList() : { Expr expr ; Args args = new Args() ; Token t ; }
     <RPAREN>
    )
     { return args ; }
+}
+// RDF sequences: the arguments of SEQ, each an expression or an empty slot.
+ExprList SeqArgs() : { Expr expr = null ; ExprList exprList = new ExprList() ;}
+{
+  (
+    <NIL>
+  |
+    <LPAREN>
+    expr = SeqArg() { exprList.add(expr) ; }
+      (<COMMA> expr = SeqArg() { exprList.add(expr) ; } )*
+    <RPAREN>
+  )
+  { return exprList ; }
+}
+Expr SeqArg() : { Expr expr ; }
+{
+  expr = Expression() { return expr ; }
+ |
+  <UNDEF> { return NodeValue.makeNode(Node.UNDEF) ; }
 }
 ExprList ExpressionList() : { Expr expr = null ; ExprList exprList = new ExprList() ;}
 {
@@ -1099,55 +1138,52 @@ Node BlankNodePropertyListPath(TripleCollector acc) : { Token t ; }
     { return n ; }
 }
 // ------- RDF collections
+// RDF sequences: a collection is one sequence term, not rdf:first/rdf:rest triples.
+// Templates and data: members only, no gaps.
 Node Collection(TripleCollector acc) :
-    { Node listHead = nRDFnil ; Node lastCell = null ; int mark ; Node n ; Token t ; }
+    { List<Node> elts = new ArrayList<Node>() ; Node n ; Token t ; }
 {
   t = <LPAREN>
   { int beginLine = t.beginLine; int beginColumn = t.beginColumn; t = null; }
   (
-    { Node cell = createListNode( beginLine, beginColumn) ;
-      if ( listHead == nRDFnil )
-         listHead = cell ;
-      if ( lastCell != null )
-        insert(acc, lastCell, nRDFrest, cell) ;
-      mark = acc.mark() ;
-    }
-    n = GraphNode(acc)
-    {
-      insert(acc, mark, cell, nRDFfirst, n) ;
-      lastCell = cell ;
-    }
+    n = SeqMember(acc)
+    { elts.add(n) ; }
   ) +
   // Not * here - "()" is handled separately.
   <RPAREN>
-   { if ( lastCell != null )
-       insert(acc, lastCell, nRDFrest, nRDFnil) ;
-     return listHead ; }
+   { return createSeqNode(elts, beginLine, beginColumn) ; }
 }
+// RDF sequences: a member may be an empty slot.
+Node SeqMember(TripleCollector acc) : { Node n ; }
+{
+  n = GraphNode(acc) { return n ; }
+ |
+  <UNDEF> { return Node.UNDEF ; }
+}
+// RDF sequences: in a pattern, a member may also be a gap "..." (any run of members)
+// or a named gap "...?rest" (any run, bound to ?rest as a sequence).
 Node CollectionPath(TripleCollector acc) :
-    { Node listHead = nRDFnil ; Node lastCell = null ; int mark ; Node n ; Token t ; }
+    { List<Node> elts = new ArrayList<Node>() ; Node n ; Token t ; }
 {
   t = <LPAREN>
   { int beginLine = t.beginLine; int beginColumn = t.beginColumn; t = null; }
   (
-    { Node cell = createListNode( beginLine, beginColumn) ;
-      if ( listHead == nRDFnil )
-         listHead = cell ;
-      if ( lastCell != null )
-        insert(acc, lastCell, nRDFrest, cell) ;
-      mark = acc.mark() ;
-    }
-    n = GraphNodePath(acc)
-    {
-      insert(acc, mark, cell, nRDFfirst, n) ;
-      lastCell = cell ;
-    }
+    n = SeqMemberPath(acc)
+    { elts.add(n) ; }
   ) +
   // Not * here - "()" is handled separately.
   <RPAREN>
-   { if ( lastCell != null )
-       insert(acc, lastCell, nRDFrest, nRDFnil) ;
-     return listHead ; }
+   { return createSeqNode(elts, beginLine, beginColumn) ; }
+}
+Node SeqMemberPath(TripleCollector acc) : { Node n ; Token t ; }
+{
+  n = GraphNodePath(acc) { return n ; }
+ |
+  <UNDEF> { return Node.UNDEF ; }
+ |
+  t = <ELLIPSIS> { return createSeqGapNode(t.beginLine, t.beginColumn) ; }
+ |
+  t = <GAPVAR> { return createSeqGapNode(t.image, t.beginLine, t.beginColumn) ; }
 }
 // ---- RDF-star Annotation Syntax
 // Allow paths. Query graph patterns.
@@ -1220,7 +1256,7 @@ Node GraphNodePath(TripleCollector acc) : { Node n ; }
 |
   n = ReifiedTriple(acc) { return n ; }
 }
-Node VarOrTerm() : { Node n = null ; String iri ; }
+Node VarOrTerm() : { Node n = null ; String iri ; Token t ; }
 {
   ( n = Var()
   | iri = iri() { return createNode(iri) ; }
@@ -1229,7 +1265,8 @@ Node VarOrTerm() : { Node n = null ; String iri ; }
   | n = BooleanLiteral()
   | n = BlankNode()
   //  <LPAREN> <RPAREN>     { return nRDFnil ; }
-  | <NIL> { return nRDFnil ; }
+  // RDF sequences: "()" is the empty sequence, not rdf:nil.
+  | t = <NIL> { return createSeqNode(new ArrayList<Node>(), t.beginLine, t.beginColumn) ; }
   | n = TripleTerm() { return n; }
   )
   { return n; }
@@ -1410,12 +1447,30 @@ Expr RelationalExpression() : { Expr expr1, expr2 ; ExprList a ; }
       { expr1 = new E_LessThanOrEqual(expr1, expr2) ; }
   | <GE> expr2 = NumericExpression()
       { expr1 = new E_GreaterThanOrEqual(expr1, expr2) ; }
-  | <IN> a = ExpressionList()
+  | <IN>
+    ( a = ExpressionList()
       { expr1 = new E_OneOf(expr1, a) ; }
-  | <NOT> <IN> a = ExpressionList()
+    | expr2 = SeqRef()
+      { expr1 = new E_InSeq(expr1, expr2) ; }
+    )
+  | <NOT> <IN>
+    ( a = ExpressionList()
       { expr1 = new E_NotOneOf(expr1, a) ; }
+    | expr2 = SeqRef()
+      { expr1 = new E_NotInSeq(expr1, expr2) ; }
+    )
   )?
     { return expr1 ; }
+}
+// RDF sequences: the right-hand side of "IN ?seq": a variable, SEQ(...) or an indexed one of these,
+// so that "IN (" still opens an expression list.
+Expr SeqRef() : { Expr expr ; Expr idx ; Node n ; ExprList a ; }
+{
+  ( n = Var() { expr = asExpr(n) ; }
+  | <SEQ> a = SeqArgs() { expr = new E_MkSeq(a) ; }
+  )
+  ( <LBRACKET> idx = Expression() <RBRACKET> { expr = new E_SeqAt(expr, idx) ; } )*
+  { return expr ; }
 }
 Expr NumericExpression () : { Expr expr ; }
 {
@@ -1476,24 +1531,38 @@ Expr UnaryExpression() : { Expr expr ; }
   | <MINUS> expr = PrimaryExpression() { return new E_UnaryMinus(expr) ; }
   | expr = PrimaryExpression() { return expr ; }
 }
-Expr PrimaryExpression() : { Expr expr ; Node n ; }
+Expr PrimaryExpression() : { Expr expr ; Node n ; Expr idx ; Expr idx2 ; }
 {
-  ( expr = BrackettedExpression() { return expr ; }
-  | expr = BuiltInCall() { return expr ; }
-  | expr = iriOrFunction() { return expr ; }
-// NOT  | n = ExprVarOrTerm()    { return asExpr(n) ; }
+  ( expr = BrackettedExpression()
+  | expr = BuiltInCall()
+  | expr = iriOrFunction()
+// NOT  | n = VarOrTerm()    { return asExpr(n) ; }
 // Because of iriOrFunction
 // Can't use iri() here
-  | n = RDFLiteral() { return asExpr(n) ; }
-  | n = NumericLiteral() { return asExpr(n) ; }
-  | n = BooleanLiteral() { return asExpr(n) ; }
-  | n = Var() { return asExpr(n) ; }
-  | n = ExprTripleTerm() { return asExpr(n) ; }
+  | n = RDFLiteral() { expr = asExpr(n) ; }
+  | n = NumericLiteral() { expr = asExpr(n) ; }
+  | n = BooleanLiteral() { expr = asExpr(n) ; }
+  | n = Var() { expr = asExpr(n) ; }
+  | n = ExprTripleTerm() { expr = asExpr(n) ; }
 // and not SPARQL 12
 // needs checking.
 // Use this for ?var(args)
 //  |  expr = VarOrFunction()  { return expr ; }
   )
+  // RDF sequences: expr[i] is the member at a 1-based position;
+  // expr[m...n], expr[m...], expr[...n] are slices (closed, 1-based, clamped).
+  ( <LBRACKET>
+    ( <ELLIPSIS> idx2 = Expression() <RBRACKET>
+        { expr = new E_SeqSliceTo(expr, idx2) ; }
+    | idx = Expression()
+      ( <RBRACKET>
+          { expr = new E_SeqAt(expr, idx) ; }
+      | <ELLIPSIS> { idx2 = null ; } ( idx2 = Expression() )? <RBRACKET>
+          { expr = ( idx2 == null ) ? new E_SeqSliceFrom(expr, idx) : new E_SeqSlice(expr, idx, idx2) ; }
+      )
+    )
+  )*
+  { return expr ; }
 }
 // Node ExprVarOrTerm() : { Node n; String s;}
 // {
@@ -1646,6 +1715,13 @@ Expr BuiltInCall() : { Expr expr ;
   | expr = NotExistsFunc() { return expr ; }
   | <IS_TRIPLE> <LPAREN> expr = Expression() <RPAREN>
     { return new E_IsTriple(expr) ; }
+  // RDF sequences
+  | <IS_SEQ> <LPAREN> expr = Expression() <RPAREN>
+    { return new E_IsSeq(expr) ; }
+  | <SEQLEN> <LPAREN> expr = Expression() <RPAREN>
+    { return new E_SeqLen(expr) ; }
+  | <SEQ> a = SeqArgs()
+    { return new E_MkSeq(a) ; }
   | <TRIPLE> <LPAREN> expr1 = Expression() <COMMA>
                        expr2 = Expression() <COMMA>
                        expr3 = Expression() <RPAREN>
@@ -1886,6 +1962,8 @@ TOKEN:
 | <VAR1: "?" <VARNAME> >
 | <VAR2: "$" <VARNAME> >
 | <LANG_DIR: <AT> (<A2Z>)+("-" (<A2ZN>)+)* ( "--" (<A2Z>)* )? >
+   // RDF sequences: a named gap "...?rest" in a sequence pattern is one token.
+| <GAPVAR: "..." ("?" | "$") <VARNAME> >
 | <#A2Z: ["a"-"z","A"-"Z"]>
 | <#A2ZN: ["a"-"z","A"-"Z","0"-"9"]>
 }
@@ -1926,9 +2004,14 @@ TOKEN [IGNORE_CASE] :
 | < UNION: "union" >
 | < MINUS_P: "minus" >
 | < BIND: "bind" >
+| < UNNEST: "unnest" >
+| < AT_KW: "at" >
 | < SERVICE: "service" >
 | < TRIPLE: "TRIPLE" >
 | < IS_TRIPLE: "isTRIPLE" >
+| < IS_SEQ: "isSEQ" >
+| < SEQLEN: "SEQLEN" >
+| < SEQ: "SEQ" >
 | < SUBJECT: "SUBJECT" >
 | < PREDICATE: "PREDICATE" >
 | < OBJECT: "OBJECT" >
@@ -2097,6 +2180,8 @@ TOKEN :
 | < SEMICOLON: ";" >
 | < COMMA: "," >
 | < DOT: "." >
+  // RDF sequences: a gap in a sequence pattern, and the range mark of a slice.
+| < ELLIPSIS: "..." >
 | < EQ: "=" >
 | < NE: "!=" >
 | < GT: ">" >
