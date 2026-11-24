@@ -102,6 +102,13 @@ public class ElementWalker {
         }
 
         @Override
+        public void visit(ElementUnnest el) {
+            before(el);
+            proc.visit(el);
+            after(el);
+        }
+
+        @Override
         public void visit(ElementData el) {
             before(el);
             proc.visit(el);

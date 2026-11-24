@@ -27,6 +27,7 @@ import java.util.function.Function;
 
 import org.apache.jena.atlas.lib.NotImplemented;
 import org.apache.jena.graph.Node;
+import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryFactory;
@@ -514,14 +515,8 @@ public class OpAsQuery {
             if ( args.isNode() )
                 return args.getArg();
 
-            // List ...
-            List<Node> list = args.getArgList();
-            if ( list.size() == 0 )
-                return RDF.Nodes.nil;
-            BasicPattern bgp = new BasicPattern();
-            Node head = GraphList.listToTriples(list, bgp);
-            currentGroup().addElement(process(bgp));
-            return head;
+            // rdf-array: a list of arguments is one sequence term.
+            return NodeFactory.createSeqNode(args.getArgList()) ;
         }
 
         // There is one special case to consider:
@@ -864,6 +859,13 @@ public class OpAsQuery {
             insertIntoGroup(currentGroup(), e);
             Element elmtUnfold = new ElementUnfold( opUnfold.getExpr(), opUnfold.getVar1(), opUnfold.getVar2() );
             currentGroup().addElement(elmtUnfold);
+        }
+
+        @Override
+        public void visit(OpUnnest opUnnest) {
+            Element e = asElement(opUnnest.getSubOp()) ;
+            insertIntoGroup(currentGroup(), e) ;
+            currentGroup().addElement(new ElementUnnest(opUnnest.getExpr(), opUnnest.getVar(), opUnnest.getPosVar())) ;
         }
 
         @Override

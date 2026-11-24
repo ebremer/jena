@@ -160,7 +160,27 @@ public class TemplateLib {
             Triple t1 = subst(n.getTriple(), b, bNodeMap);
             return NodeFactory.createTripleTerm(t1);
         }
+        if ( n.isNodeSeq() )
+            return substSeq(n, b, bNodeMap);
         return n;
+    }
+
+    /**
+     * rdf-array: a sequence of a template, its members substituted at every depth and
+     * its blank nodes renewed for each solution, as anywhere in a template. A member
+     * whose variable has no value is an empty slot (rdf-undef), so that what a pattern
+     * read from {@code ( 1 undef 3 )} writes back the same.
+     */
+    private static Node substSeq(Node seq, Binding b, Map<Node, Node> bNodeMap) {
+        List<Node> elts = seq.getSeq();
+        List<Node> elts2 = new ArrayList<>(elts.size());
+        for ( Node elt : elts ) {
+            Node elt2 = subst(elt, b, bNodeMap, true);
+            if ( Var.isVar(elt2) && !Var.isBlankNodeVar(elt2) )
+                elt2 = Node.UNDEF;
+            elts2.add(elt2);
+        }
+        return NodeFactory.createSeqNode(elts2);
     }
 
     /** Generate a blank node consistently */

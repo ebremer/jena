@@ -21,6 +21,8 @@
 
 package org.apache.jena.sparql.engine;
 
+import org.apache.jena.sparql.core.Node_SeqGap;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -118,6 +120,11 @@ public class Rename {
             Triple t2 = NodeTransformLib.transform(n->Rename.reverseVarRename(n, varPrefix, repeatedly), t1);
             return Objects.equals(t1, t2) ? node : NodeFactory.createTripleTerm(t2);
         }
+        // RDF sequences
+        if ( node.isNodeSeq() )
+            return NodeTransformLib.transformSeq(n->Rename.reverseVarRename(n, varPrefix, repeatedly), node);
+        if ( node instanceof Node_SeqGap gap )
+            return NodeTransformLib.transformSeqGap(n->Rename.reverseVarRename(n, varPrefix, repeatedly), gap);
 
         if ( !Var.isVar(node) )
             return node;
@@ -176,6 +183,11 @@ public class Rename {
                 Triple t1 = node.getTriple();
                 Triple t2 = NodeTransformLib.transform(this, t1);
                 return Objects.equals(t1, t2) ? node : NodeFactory.createTripleTerm(t2);
+            } else if ( node.isNodeSeq() ) {
+                // RDF sequences
+                return NodeTransformLib.transformSeq(this, node);
+            } else if ( node instanceof Node_SeqGap gap ) {
+                return NodeTransformLib.transformSeqGap(this, gap);
             } else if ( !Var.isVar(node) ) {
                 return node;
             }

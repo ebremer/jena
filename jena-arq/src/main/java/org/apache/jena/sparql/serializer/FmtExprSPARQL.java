@@ -97,6 +97,39 @@ public class FmtExprSPARQL {
 
         @Override
         public void visit(ExprFunction2 expr) {
+            if ( expr instanceof E_SeqAt ) {
+                // RDF sequences: seq[index]
+                expr.getArg1().visit(this);
+                out.print("[");
+                expr.getArg2().visit(this);
+                out.print("]");
+                return;
+            }
+            if ( expr instanceof E_SeqSliceFrom ) {
+                // RDF sequences: seq[m...]
+                expr.getArg1().visit(this);
+                out.print("[");
+                expr.getArg2().visit(this);
+                out.print("...]");
+                return;
+            }
+            if ( expr instanceof E_SeqSliceTo ) {
+                // RDF sequences: seq[...n]
+                expr.getArg1().visit(this);
+                out.print("[...");
+                expr.getArg2().visit(this);
+                out.print("]");
+                return;
+            }
+            if ( expr instanceof E_InSeq || expr instanceof E_NotInSeq ) {
+                // RDF sequences: x IN ?seq, x NOT IN ?seq
+                out.print("( ");
+                expr.getArg1().visit(this);
+                out.print(expr instanceof E_InSeq ? " IN " : " NOT IN ");
+                expr.getArg2().visit(this);
+                out.print(" )");
+                return;
+            }
             if ( expr.getOpName() == null ) {
                 printInFunctionForm(expr);
                 return;
@@ -112,6 +145,16 @@ public class FmtExprSPARQL {
 
         @Override
         public void visit(ExprFunction3 expr) {
+            if ( expr instanceof E_SeqSlice ) {
+                // RDF sequences: seq[m...n]
+                expr.getArg1().visit(this);
+                out.print("[");
+                expr.getArg2().visit(this);
+                out.print("...");
+                expr.getArg3().visit(this);
+                out.print("]");
+                return;
+            }
             printInFunctionForm(expr);
         }
 
@@ -134,6 +177,13 @@ public class FmtExprSPARQL {
                 out.print(" NOT IN ");
                 printExprList(oneOf.getRHS());
                 out.print(" )");
+                return;
+            }
+
+            if ( func instanceof E_MkSeq ) {
+                // RDF sequences: SEQ(e1, e2, ...)
+                out.print("SEQ");
+                printExprList(func.getArgs());
                 return;
             }
             printInFunctionForm(func);

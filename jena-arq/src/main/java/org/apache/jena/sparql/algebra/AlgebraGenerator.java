@@ -159,6 +159,8 @@ public class AlgebraGenerator
             return compileElementFilter(elt2);
         if ( elt instanceof ElementBind elt2 )
             return compileElementBind(elt2);
+        if ( elt instanceof ElementUnnest elt2 )
+            return OpUnnest.create(OpTable.unit(), elt2.getExpr(), elt2.getVar(), elt2.getPosVar());
         if ( elt instanceof ElementAssign elt2 )
             return compileElementAssign(elt2);
 
@@ -303,6 +305,9 @@ public class AlgebraGenerator
 
         if ( elt instanceof ElementBind bind )
             return OpExtend.create(current, bind.getVar(), bind.getExpr());
+
+        if ( elt instanceof ElementUnnest unnest )
+            return OpUnnest.create(current, unnest.getExpr(), unnest.getVar(), unnest.getPosVar());
 
         if ( elt instanceof ElementOptional eltOpt )
             return compileElementOptional(current, eltOpt);

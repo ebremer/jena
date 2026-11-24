@@ -227,6 +227,15 @@ public class WalkerVisitor implements OpVisitorByTypeAndExpr, ExprVisitorFunctio
         after(opUnfold) ;
     }
 
+    @Override
+    public void visit(OpUnnest opUnnest) {
+        before(opUnnest) ;
+        if ( exprVisitor != null )
+            walk(opUnnest.getExpr());
+        visit1$(opUnnest) ;
+        after(opUnnest) ;
+    }
+
     // Transforming to quads needs the graph node handled before doing the sub-algebra ops
     // so it has to be done as before/after by the Walker. By the time visit(OpGraph) is called,
     // the sub-tree has already been visited.

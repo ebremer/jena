@@ -195,6 +195,12 @@ public class IsoAlgTuple {
                 if ( b )
                     return true;
             }
+            // RDF sequences
+            if ( n.isNodeSeq() ) {
+                boolean b = containsMappable(TupleFactory.create(n.getSeq()));
+                if ( b )
+                    return true;
+            }
         }
         return false;
     }
@@ -263,7 +269,19 @@ public class IsoAlgTuple {
             return null;
         }
 
-        // Map an atomic term (not triple term)
+        // RDF sequences: element by element, same length.
+        if ( n1.isNodeSeq() ) {
+            if ( n2.isNodeSeq() ) {
+                Tuple<Node> tuple1 = TupleFactory.create(n1.getSeq());
+                Tuple<Node> tuple2 = TupleFactory.create(n2.getSeq());
+                return matchTuples(tuple1, tuple2, mapping, mappable, nodeTest);
+            }
+            return null;
+        } else if ( n2.isNodeSeq() ) {
+            return null;
+        }
+
+        // Map an atomic term (not triple term, not sequence)
         if ( mappable.mappable(n1, n2) ) {
             if ( mapping.reverseMapped(n2) ) {
                 // Already a target.

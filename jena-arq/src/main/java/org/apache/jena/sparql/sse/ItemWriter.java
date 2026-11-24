@@ -21,6 +21,8 @@
 
 package org.apache.jena.sparql.sse;
 
+import org.apache.jena.sparql.core.Node_SeqGap;
+
 import java.io.OutputStream;
 import java.util.Map;
 import java.util.Set;
@@ -109,6 +111,35 @@ public class ItemWriter
             return;
         }
 
+        if ( node.isNodeSeq() ) {
+            // As (seqterm ...)
+            out.print("(");
+            out.print(Tags.tagSeqTerm);
+            for ( Node elt : node.getSeq() ) {
+                out.print(" ");
+                writeNode(out, elt, sCxt);
+            }
+            out.print(")");
+            return;
+        }
+
+        if ( node.isNodeUndef() ) {
+            out.print(Tags.tagUndef);
+            return;
+        }
+
+        if ( node instanceof Node_SeqGap gap ) {
+            // As (seqgap) or (seqgap ?rest)
+            out.print("(");
+            out.print(Tags.tagSeqGap);
+            if ( gap.isNamed() ) {
+                out.print(" ");
+                writeNode(out, gap.getVar(), sCxt);
+            }
+            out.print(")");
+            return;
+        }
+
         if ( Node.ANY.equals(node) ) {
             out.print("ANY");
             return;
@@ -186,7 +217,7 @@ public class ItemWriter
         }
 
         // Tags to leave on one line.
-        private static Set<String> oneLineTags = Set.of(Tags.tagTripleTerm, Tags.tagTriple);
+        private static Set<String> oneLineTags = Set.of(Tags.tagTripleTerm, Tags.tagTriple, Tags.tagSeqTerm, Tags.tagSeqGap);
 
         @Override
         public void visit(Item item, ItemList list) {

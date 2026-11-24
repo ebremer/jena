@@ -55,6 +55,9 @@ public class ModelUtils
         if ( node.isTripleTerm() )
             return new ResourceImpl(node, null) ;
 
+        if ( node.isNodeSeq() )
+            return new ResourceImpl(node, null);
+
         throw new ARQInternalErrorException("Unknown node type for node: "+node);
     }
 

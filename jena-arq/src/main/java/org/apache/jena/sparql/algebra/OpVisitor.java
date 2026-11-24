@@ -46,6 +46,7 @@ public interface OpVisitor
     public void visit(OpAssign opAssign);
     public void visit(OpExtend opExtend);
     public void visit(OpUnfold opUnfold);
+    public void visit(OpUnnest opUnnest) ;
 
     // Op2
     public void visit(OpJoin opJoin);

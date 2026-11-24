@@ -452,6 +452,11 @@ public class OpExecutor {
         return qIter;
     }
 
+    protected QueryIterator execute(OpUnnest opUnnest, QueryIterator input) {
+        QueryIterator qIter = exec(opUnnest.getSubOp(), input);
+        return new QueryIterUnnest(qIter, opUnnest.getExpr(), opUnnest.getVar(), opUnnest.getPosVar(), execCxt);
+    }
+
     protected QueryIterator execute(OpExtend opExtend, QueryIterator input) {
         // We know (parse time checking) the variable is unused so far in
         // the query so we can use QueryIterAssign knowing that it behaves

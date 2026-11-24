@@ -49,6 +49,9 @@ public class Tags
     public static final String tagTriplePath      = "path";
     // RDF Star quoted triple : Node_Triple
     public static final String tagTripleTerm      = "tripleterm";
+    // RDF sequence term : Node_Seq, and a gap "..." / "...?rest" in a sequence pattern : Node_SeqGap
+    public static final String tagSeqTerm         = "seqterm";
+    public static final String tagSeqGap          = "seqgap";
 
     public static final String tagBase            = "base";
     public static final String tagPrefix          = "prefix";
@@ -96,6 +99,8 @@ public class Tags
     public static final String tagAssign          = "assign";
     public static final String tagFind            = "find";
     public static final String tagExtend          = "extend";
+    // RDF sequences: UNNEST(expr AS ?x AT ?i)
+    public static final String tagUnnest          = "unnest";
     public static final String symAssign          = ":=";
     public static final String tagSlice           = "slice";
     public static final String tagRename          = "rename";
@@ -246,6 +251,16 @@ public class Tags
     public static final String tagUri2            = "uri2";
 
     public static final String tagIsTriple        = "isTriple";
+    // RDF sequences
+    public static final String tagIsSeq           = "isSeq";
+    public static final String tagSeqLen          = "seqLen";
+    public static final String tagSeqAt           = "seqAt";
+    public static final String tagSeqSlice        = "seqSlice";       // seq[m...n]
+    public static final String tagSeqSliceFrom    = "seqSliceFrom";   // seq[m...]
+    public static final String tagSeqSliceTo      = "seqSliceTo";     // seq[...n]
+    public static final String tagInSeq           = "inSeq";          // x IN ?seq
+    public static final String tagNotInSeq        = "notInSeq";       // x NOT IN ?seq
+    public static final String tagMkSeq           = "mkseq";
     public static final String tagSubject         = "subject";
     public static final String tagPredicate       = "predicate";
     public static final String tagObject          = "object";

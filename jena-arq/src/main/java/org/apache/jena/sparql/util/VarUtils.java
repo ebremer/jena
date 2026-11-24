@@ -43,6 +43,25 @@ public class VarUtils {
         addVar(acc, triple.getObject());
     }
 
+    /**
+     * Add the variables a match of the triple always binds. That leaves out those
+     * inside a sequence: a member may be an empty slot, which binds nothing.
+     */
+    public static void addFixedVarsFromTriple(Collection<Var> acc, Triple triple) {
+        addFixedVar(acc, triple.getSubject());
+        addFixedVar(acc, triple.getPredicate());
+        addFixedVar(acc, triple.getObject());
+    }
+
+    private static void addFixedVar(Collection<Var> acc, Node n) {
+        if ( n == null || n.isNodeSeq() )
+            return;
+        if ( n.isTripleTerm() )
+            addFixedVarsFromTriple(acc, n.getTriple());
+        else
+            addVar(acc, n);
+    }
+
     public static void addVarsFromQuad(Collection<Var> acc, Quad quad) {
         addVar(acc, quad.getGraph());
         addVar(acc, quad.getSubject());
@@ -65,6 +84,12 @@ public class VarUtils {
         else if ( n.isTripleTerm() ) {
             Triple t = n.getTriple();
             addVarsFromTriple(acc, t);
+        } else if ( n.isNodeSeq() ) {
+            for ( Node elt : n.getSeq() )
+                addVar(acc, elt);
+        } else if ( n instanceof Node_SeqGap gap ) {
+            if ( gap.isNamed() )
+                acc.add(gap.getVar());
         }
     }
 

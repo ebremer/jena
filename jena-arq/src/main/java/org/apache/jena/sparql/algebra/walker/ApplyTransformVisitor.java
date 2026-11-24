@@ -162,6 +162,15 @@ public class ApplyTransformVisitor implements OpVisitorByTypeAndExpr, ExprVisito
         visit1(opUnfold) ;
     }
 
+    @Override
+    public void visit(OpUnnest opUnnest) {
+        OpUnnest opUnnest2 = opUnnest ;
+        Expr expr2 = collect(1).get(0) ;
+        if ( expr2 != opUnnest.getExpr() )
+            opUnnest2 = opUnnest.copy(opUnnest.getSubOp(), expr2) ;
+        visit1(opUnnest2) ;
+    }
+
     // Special test cases for collectors.
 
     // Careful about order.

@@ -525,6 +525,9 @@ public class G {
     public static List<Node> listMembers(Graph graph, Node node) {
         Objects.requireNonNull(graph, "graph");
         Objects.requireNonNull(node, "node");
+        // RDF sequences: the term holds its elements.
+        if ( node.isNodeSeq() )
+            return node.getSeq();
         List<Node> nodes = GList.members(graph, node);
         return nodes;
     }
@@ -533,6 +536,9 @@ public class G {
     public static int listLength(Graph graph, Node node) {
         Objects.requireNonNull(graph, "graph");
         Objects.requireNonNull(node, "node");
+        // RDF sequences: the term holds its elements.
+        if ( node.isNodeSeq() )
+            return node.getSeq().size();
         if ( ! GList.isListNode(graph, node) )
             return -1;
         return (int)GList.listLength(graph, node);
@@ -559,6 +565,9 @@ public class G {
     public static List<Node> getOneOrList(Graph graph, Node node) {
         Objects.requireNonNull(graph, "graph");
         Objects.requireNonNull(node, "node");
+        // RDF sequences: the term holds its elements.
+        if ( node.isNodeSeq() )
+            return node.getSeq();
         // An element on its own is a list of one
         if ( ! GList.isListNode(graph, node) )
             return List.of(node);

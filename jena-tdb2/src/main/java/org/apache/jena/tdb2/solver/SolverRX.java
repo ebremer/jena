@@ -104,7 +104,8 @@ public class SolverRX {
 
         Iterator<Quad> dsgIter = accessData(patternTuple, nodeTupleTable, anyGraph, filter, execCxt);
 
-        Iterator<Binding> matched = Iter.iter(dsgIter).map(dQuad->SolverRX4.matchQuad(input, dQuad, tGraphNode, tPattern)).removeNulls();
+        // A sequence pattern with gaps can match one quad in several ways (rdf-array).
+        Iterator<Binding> matched = Iter.flatMap(dsgIter, dQuad->SolverRX4.matchQuad(input, dQuad, tGraphNode, tPattern));
         return convFromBinding(matched, nodeTable);
     }
 

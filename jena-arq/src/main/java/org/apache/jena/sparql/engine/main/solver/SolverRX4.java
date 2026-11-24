@@ -22,25 +22,24 @@
 package org.apache.jena.sparql.engine.main.solver;
 
 import static org.apache.jena.sparql.engine.main.solver.SolverLib.nodeTopLevel;
-import static org.apache.jena.sparql.engine.main.solver.SolverLib.sameTermAs;
 import static org.apache.jena.sparql.engine.main.solver.SolverLib.tripleHasEmbTripleWithVars;
 
 import java.util.Iterator;
 import java.util.function.Predicate;
 
 import org.apache.jena.atlas.iterator.Iter;
-import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sparql.core.Substitute;
-import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.engine.ExecutionContext;
 import org.apache.jena.sparql.engine.binding.Binding;
-import org.apache.jena.sparql.engine.binding.BindingBuilder;
 
-/** Solve patterns when there may be a triple term with variables. */
+/**
+ * Compound terms - quad form. Solve patterns when there is a triple term
+ * (RDF-star) or a sequence with variables or gaps ({@code ...}) inside.
+ */
 public class SolverRX4 {
 
     /**
@@ -58,7 +57,7 @@ public class SolverRX4 {
         if ( DATAPATH ) {
             if ( ! tripleHasEmbTripleWithVars(pattern) &&
                     (graphName == null || ! graphName.isTripleTerm() ) )
-                // No variables inside <<()>>
+                // No variables or gaps inside <<>> or (..)
                 return matchDataQuad(chain, graphName, pattern, execCxt);
         }
         return rdfStarQuadSub(chain, graphName, pattern, execCxt);
@@ -72,14 +71,15 @@ public class SolverRX4 {
     private static Iterator<Binding> rdfStarQuadSub(Binding binding, Node xGraphName, Triple xPattern, ExecutionContext execCxt) {
         Triple tPattern = Substitute.substitute(xPattern, binding);
         Node graphName = Substitute.substitute(xGraphName, binding);
-        Node g = (graphName == null) ? Quad.defaultGraphIRI : nodeTopLevel(graphName);
-        Node s = nodeTopLevel(tPattern.getSubject());
-        Node p = nodeTopLevel(tPattern.getPredicate());
-        Node o = nodeTopLevel(tPattern.getObject());
+        Node gPattern = (graphName == null) ? Quad.defaultGraphIRI : graphName;
+        Node g = nodeTopLevel(gPattern);
+        Node s = nodeTopLevel(xPattern.getSubject(), tPattern.getSubject());
+        Node p = nodeTopLevel(xPattern.getPredicate(), tPattern.getPredicate());
+        Node o = nodeTopLevel(xPattern.getObject(), tPattern.getObject());
         DatasetGraph dsg = execCxt.getDataset();
         Iterator<Quad> dataIter = dsg.find(g, s, p, o);
-        Iterator<Binding> matched = Iter.map(dataIter, qData->matchQuad(binding, qData, g, tPattern));
-        return Iter.removeNulls(matched);
+        // On the pattern before substitution: see SolverRX3.
+        return Iter.flatMap(dataIter, qData->matchQuad(binding, qData, gPattern, xPattern));
     }
 
     private static final Predicate<Quad> NoFilter = null;
@@ -91,79 +91,15 @@ public class SolverRX4 {
     }
 
     /**
-     * Direct.
-     * Match the graph with a triple pattern.
-     * This is the accessor to the graph.
-     * It assumes any triple terms have been dealt with.
+     * Match data "qData" against "tGraphNode, tPattern", including compound terms.
+     * There may be several results: see {@link SolverRX3#matchTriple}.
      */
-    private static Iterator<Binding> matchData(Iterator<Binding> chain, Triple pattern, ExecutionContext execCxt) {
-        Graph g = execCxt.getActiveGraph();
-        Iterator<Binding> iter = StageMatchTriple.accessTriple(chain, g, pattern, null, execCxt);
+    public static Iterator<Binding> matchQuad(Binding input, Quad qData, Node tGraphNode, Triple tPattern) {
+        Iterator<Binding> iter = Iter.singletonIterator(input);
+        iter = Iter.flatMap(iter, b->SolverRX3.match(b, qData.getGraph(), tGraphNode));
+        iter = Iter.flatMap(iter, b->SolverRX3.match(b, qData.getSubject(), tPattern.getSubject()));
+        iter = Iter.flatMap(iter, b->SolverRX3.match(b, qData.getPredicate(), tPattern.getPredicate()));
+        iter = Iter.flatMap(iter, b->SolverRX3.match(b, qData.getObject(), tPattern.getObject()));
         return iter;
-    }
-
-    /** Match data "qData" against "tGraphNode, tPattern", including RDF-star terms. */
-    public static Binding matchQuad(Binding input, Quad qData, Node tGraphNode, Triple tPattern) {
-        BindingBuilder bb = Binding.builder(input);
-        boolean r = matchQuad(bb, qData, tGraphNode, tPattern);
-        return r ? bb.build() : null;
-    }
-
-    private static boolean matchQuad(BindingBuilder bb, Quad qData, Node tGraphNode, Triple tPattern) {
-        Node sPattern = tPattern.getSubject();
-        Node pPattern = tPattern.getPredicate();
-        Node oPattern = tPattern.getObject();
-
-        Node gData = qData.getGraph();
-        Node sData = qData.getSubject();
-        Node pData = qData.getPredicate();
-        Node oData = qData.getObject();
-
-        if ( ! match(bb, gData, tGraphNode) )
-            return false;
-        if ( ! match(bb, sData, sPattern) )
-            return false;
-        if ( ! match(bb, pData, pPattern) )
-            return false;
-        if ( ! match(bb, oData, oPattern) )
-            return false;
-        return true;
-    }
-
-    // RDF term matcher - may recurse and call matchTriple is a triple term is in the pattern.
-    private static boolean match(BindingBuilder bb, Node nData, Node nPattern) {
-        if ( nPattern == null )
-            return true;
-        if ( nData == Node.ANY )
-            return true;
-
-        // Deep substitute. This happens anyway as we walk structures.
-        //   nPattern = Substitute.substitute(nPattern, input);
-        // Shallow substitute
-        nPattern = Var.lookup(v->bb.get(v), nPattern);
-
-        // nPattern.isConcrete() : either nPattern is an RDF term or is <<>> with no variables.
-        if ( nPattern.isConcrete() ) {
-            // No nested variables. Is data equal to pattern?
-            // Term comparison.
-            return sameTermAs(nData, nPattern);
-        }
-
-        // Easy case - nPattern is a variable.
-        if ( Var.isVar(nPattern) ) {
-            Var var = Var.alloc(nPattern);
-            bb.add(var, nData);
-            return true;
-        }
-
-        // nPattern is <<>> with variables. Is the data a <<>>?
-        if ( !nData.isTripleTerm() )
-            return false;
-
-        // nData is <<>>, nPattern is <<>>
-        // Unpack, match components.
-        Triple tPattern = nPattern.getTriple();
-        Triple tData = nData.getTriple();
-        return SolverRX3.bindTriple(bb, tData, tPattern);
     }
 }

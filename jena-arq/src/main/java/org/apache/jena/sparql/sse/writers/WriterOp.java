@@ -583,6 +583,24 @@ public class WriterOp
         }
 
         @Override
+        public void visit(OpUnnest opUnnest) {
+            // (unnest (?x ?i) expr sub)
+            start(opUnnest, NoNL);
+            start();
+            out.print(opUnnest.getVar().toString());
+            if ( opUnnest.hasPosVar() ) {
+                out.print(" ");
+                out.print(opUnnest.getPosVar().toString());
+            }
+            finish();
+            out.print(" ");
+            WriterExpr.output(out, opUnnest.getExpr(), sContext);
+            out.println();
+            printOp(opUnnest.getSubOp());
+            finish(opUnnest);
+        }
+
+        @Override
         public void visit(OpSlice opSlice) {
             start(opSlice, NoNL);
             writeIntOrDefault(opSlice.getStart());

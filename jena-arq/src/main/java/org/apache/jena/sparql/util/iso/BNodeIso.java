@@ -21,6 +21,8 @@
 
 package org.apache.jena.sparql.util.iso;
 
+import java.util.List;
+
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.sparql.util.EqualityTest;
@@ -75,6 +77,23 @@ public class BNodeIso implements EqualityTest
 
         if ( n1.isBlank() && n2.isBlank() )
             return Iso.nodeIso(n1, n2, mapping);
+
+        if ( n1.isNodeSeq() && n2.isNodeSeq() ) {
+            // rdf-array: element by element, blank nodes mapped as at the top level.
+            List<Node> s1 = n1.getSeq();
+            List<Node> s2 = n2.getSeq();
+            if ( s1.size() != s2.size() )
+                return false;
+            for ( int i = 0 ; i < s1.size() ; i++ ) {
+                if ( ! equal(s1.get(i), s2.get(i)) )
+                    return false;
+            }
+            return true;
+        }
+
+        // rdf-undef: the empty slot of a sequence is one object, equal only to itself.
+        if ( n1.isNodeUndef() && n2.isNodeUndef() )
+            return true;
 
         if ( n1.isVariable() && n2.isVariable() )
             return mapping.makeIsomorphic(n1, n2);

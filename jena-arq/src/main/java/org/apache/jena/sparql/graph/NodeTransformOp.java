@@ -26,6 +26,7 @@ import java.util.List ;
 import javax.xml.crypto.dsig.Transform;
 
 import org.apache.jena.graph.Node ;
+import org.apache.jena.sparql.ARQInternalErrorException ;
 import org.apache.jena.graph.Triple ;
 import org.apache.jena.sparql.algebra.Op ;
 import org.apache.jena.sparql.algebra.Table ;
@@ -169,6 +170,27 @@ class NodeTransformOp extends TransformCopy {
         if ( varExprList == varExprList2 )
             return super.transform(opExtend, subOp);
         return OpExtend.create(subOp, varExprList2);
+    }
+
+    @Override
+    public Op transform(OpUnnest opUnnest, Op subOp) {
+        // The expression is transformed by the walker; the variables here.
+        Var v = opUnnest.getVar();
+        Var v2 = transformVar(v);
+        Var p = opUnnest.getPosVar();
+        Var p2 = ( p == null ) ? null : transformVar(p);
+        if ( v == v2 && p == p2 )
+            return super.transform(opUnnest, subOp);
+        return opUnnest.copy(subOp, opUnnest.getExpr(), v2, p2);
+    }
+
+    private Var transformVar(Var v) {
+        Node n = transform.apply(v);
+        if ( n == v )
+            return v;
+        if ( ! Var.isVar(n) )
+            throw new ARQInternalErrorException("UNNEST: variable transformed to a non-variable: "+v+" -> "+n);
+        return Var.alloc(n);
     }
 
     @Override

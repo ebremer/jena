@@ -19,31 +19,24 @@
  *   SPDX-License-Identifier: Apache-2.0
  */
 
-package org.apache.jena.sparql.serializer;
+package org.apache.jena.sparql.expr;
 
-import java.util.*;
+import org.apache.jena.sparql.function.library.seq.SeqFunctions;
+import org.apache.jena.sparql.sse.Tags;
 
-import org.apache.jena.atlas.iterator.Iter;
-import org.apache.jena.graph.Node;
-import org.apache.jena.graph.Triple;
+/** {@code ?x NOT IN ?seq} - the negation of {@link E_InSeq}. */
+public class E_NotInSeq extends ExprFunction2 {
+    private static final String functionName = Tags.tagNotInSeq;
 
-/** Internal record of list details. */
-/*package*/ class TriplesListBlock {
-    Map<Node, List<Node>> listElementsMap = new HashMap<>();
-    // Triples in lists.
-    Set<Triple>           triplesInLists  = new LinkedHashSet<>();
-
-    /*package*/ void merge(TriplesListBlock other) {
-        listElementsMap.putAll(other.listElementsMap);
-        triplesInLists.addAll(other.triplesInLists);
+    public E_NotInSeq(Expr needle, Expr seq) {
+        super(needle, seq, functionName);
     }
 
     @Override
-    public String toString() {
-
-        return Iter.asString(listElementsMap.keySet().iterator(), ", ")
-            + "\n" + "{"+
-            Iter.asString(triplesInLists.iterator(), "\n")
-            +"}";
+    public NodeValue eval(NodeValue needle, NodeValue seq) {
+        return NodeValue.booleanReturn(!SeqFunctions.inSeq(needle, seq));
     }
+
+    @Override
+    public Expr copy(Expr e1, Expr e2) { return new E_NotInSeq(e1, e2); }
 }

@@ -244,12 +244,38 @@ public class NodeUtils
             return false;
         if ( p == null || ( ! p.isURI() ) )
             return false;
-        if ( o == null || ( ! o.isBlank() && ! o.isURI() && ! o.isLiteral() && !o.isTripleTerm() ) )
+        if ( o == null || ( ! o.isBlank() && ! o.isURI() && ! o.isLiteral() && !o.isTripleTerm() && !o.isNodeSeq() ) )
             return false;
 
         if ( o.isTripleTerm() ) {
             Triple tt = o.getTriple();
             return isValidAsRDF(tt.getSubject(), tt.getPredicate(), tt.getObject());
+        }
+        if ( o.isNodeSeq() )
+            return isValidSeqAsRDF(o);
+        return true;
+    }
+
+    /**
+     * rdf-array: a sequence is valid as an object when every element is an RDF term
+     * (a triple term valid as RDF, a sequence valid as such) or an empty slot.
+     */
+    private static boolean isValidSeqAsRDF(Node seq) {
+        for ( Node elt : seq.getSeq() ) {
+            if ( elt.isNodeUndef() || elt.isBlank() || elt.isURI() || elt.isLiteral() )
+                continue;
+            if ( elt.isTripleTerm() ) {
+                Triple tt = elt.getTriple();
+                if ( ! isValidAsRDF(tt.getSubject(), tt.getPredicate(), tt.getObject()) )
+                    return false;
+                continue;
+            }
+            if ( elt.isNodeSeq() ) {
+                if ( ! isValidSeqAsRDF(elt) )
+                    return false;
+                continue;
+            }
+            return false;
         }
         return true;
     }

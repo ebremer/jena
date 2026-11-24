@@ -862,6 +862,55 @@ public class BuilderExpr
         return new E_IsTriple(expr);
     };
 
+    private static Build buildIsSeq = (ItemList list) -> {
+        BuilderLib.checkLength(2, list, "isSeq: wanted 1 argument: got: "+numArgs(list));
+        Expr expr = buildExpr(list.get(1));
+        return new E_IsSeq(expr);
+    };
+
+    private static Build buildSeqLen = (ItemList list) -> {
+        BuilderLib.checkLength(2, list, "seqLen: wanted 1 argument: got: "+numArgs(list));
+        Expr expr = buildExpr(list.get(1));
+        return new E_SeqLen(expr);
+    };
+
+    private static Build buildSeqAt = (ItemList list) -> {
+        BuilderLib.checkLength(3, list, "seqAt: wanted 2 arguments: got: "+numArgs(list));
+        Expr expr1 = buildExpr(list.get(1));
+        Expr expr2 = buildExpr(list.get(2));
+        return new E_SeqAt(expr1, expr2);
+    };
+
+    private static Build buildSeqSlice = (ItemList list) -> {
+        BuilderLib.checkLength(4, list, "seqSlice: wanted 3 arguments: got: "+numArgs(list));
+        return new E_SeqSlice(buildExpr(list.get(1)), buildExpr(list.get(2)), buildExpr(list.get(3)));
+    };
+
+    private static Build buildSeqSliceFrom = (ItemList list) -> {
+        BuilderLib.checkLength(3, list, "seqSliceFrom: wanted 2 arguments: got: "+numArgs(list));
+        return new E_SeqSliceFrom(buildExpr(list.get(1)), buildExpr(list.get(2)));
+    };
+
+    private static Build buildSeqSliceTo = (ItemList list) -> {
+        BuilderLib.checkLength(3, list, "seqSliceTo: wanted 2 arguments: got: "+numArgs(list));
+        return new E_SeqSliceTo(buildExpr(list.get(1)), buildExpr(list.get(2)));
+    };
+
+    private static Build buildInSeq = (ItemList list) -> {
+        BuilderLib.checkLength(3, list, "inSeq: wanted 2 arguments: got: "+numArgs(list));
+        return new E_InSeq(buildExpr(list.get(1)), buildExpr(list.get(2)));
+    };
+
+    private static Build buildNotInSeq = (ItemList list) -> {
+        BuilderLib.checkLength(3, list, "notInSeq: wanted 2 arguments: got: "+numArgs(list));
+        return new E_NotInSeq(buildExpr(list.get(1)), buildExpr(list.get(2)));
+    };
+
+    private static Build buildMkSeq = (ItemList list) -> {
+        ExprList args = buildExprListUntagged(list, 1);
+        return new E_MkSeq(args);
+    };
+
     private static Build buildCall = (ItemList list) -> {
         ExprList args = buildExprListUntagged(list, 1);
         // Args
@@ -1119,6 +1168,15 @@ public class BuilderExpr
         dispatch(dispatchMap, Tags.tagUri, buildUri);
         dispatch(dispatchMap, Tags.tagIri2, buildIri2);
         dispatch(dispatchMap, Tags.tagUri2, buildUri2);
+        dispatch(dispatchMap, Tags.tagIsSeq, buildIsSeq);
+        dispatch(dispatchMap, Tags.tagSeqLen, buildSeqLen);
+        dispatch(dispatchMap, Tags.tagSeqAt, buildSeqAt);
+        dispatch(dispatchMap, Tags.tagSeqSlice, buildSeqSlice);
+        dispatch(dispatchMap, Tags.tagSeqSliceFrom, buildSeqSliceFrom);
+        dispatch(dispatchMap, Tags.tagSeqSliceTo, buildSeqSliceTo);
+        dispatch(dispatchMap, Tags.tagInSeq, buildInSeq);
+        dispatch(dispatchMap, Tags.tagNotInSeq, buildNotInSeq);
+        dispatch(dispatchMap, Tags.tagMkSeq, buildMkSeq);
 
         dispatch(dispatchMap, Tags.tagIn, buildIn);
         dispatch(dispatchMap, Tags.tagNotIn, buildNotIn);

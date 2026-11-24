@@ -73,7 +73,7 @@ public class OpVars
     }
 
     public static void fixedVars(Op op, Set<Var> acc) {
-        OpVarsPattern visitor = new OpVarsPattern(acc, true);
+        OpVarsPattern visitor = new OpVarsPattern(acc, true, true);
         OpWalker.walk(new OpWalkerVisitorFixed(visitor, acc), op);
     }
 
@@ -237,15 +237,29 @@ public class OpVars
         // The possibly-set-vars
         protected Set<Var> acc;
         final boolean visibleOnly;
+        final boolean fixedOnly;
 
         OpVarsPattern(Set<Var> acc, boolean visibleOnly) {
+            this(acc, visibleOnly, false);
+        }
+
+        OpVarsPattern(Set<Var> acc, boolean visibleOnly, boolean fixedOnly) {
             this.acc = acc;
             this.visibleOnly = visibleOnly;
+            this.fixedOnly = fixedOnly;
+        }
+
+        private void addPattern(Triple triple) {
+            // Variables inside a sequence are not fixed: a member may be an empty slot.
+            if ( fixedOnly )
+                VarUtils.addFixedVarsFromTriple(acc, triple);
+            else
+                VarUtils.addVarsFromTriple(acc, triple);
         }
 
         @Override
         public void visit(OpBGP opBGP) {
-            addVars(acc, opBGP.getPattern());
+            opBGP.getPattern().forEach(this::addPattern);
         }
 
         @Override
@@ -257,22 +271,26 @@ public class OpVars
         @Override
         public void visit(OpQuadPattern quadPattern) {
             addVar(acc, quadPattern.getGraphNode());
-            addVars(acc, quadPattern.getBasicPattern());
+            quadPattern.getBasicPattern().forEach(this::addPattern);
         }
 
         @Override
         public void visit(OpQuadBlock quadBlock) {
-            addVars(acc, quadBlock.getPattern());
+            quadBlock.getPattern().forEach(q->{
+                addVar(acc, q.getGraph());
+                addPattern(q.asTriple());
+            });
         }
 
         @Override
         public void visit(OpTriple opTriple) {
-            VarUtils.addVarsFromTriple(acc, opTriple.getTriple());
+            addPattern(opTriple.getTriple());
         }
 
         @Override
         public void visit(OpQuad opQuad) {
-            VarUtils.addVarsFromQuad(acc, opQuad.getQuad());
+            addVar(acc, opQuad.getQuad().getGraph());
+            addPattern(opQuad.getQuad().asTriple());
         }
 
         @Override
@@ -321,6 +339,14 @@ public class OpVars
             if ( opUnfold.getVar2() != null ) {
                 acc.add( opUnfold.getVar2() );
             }
+        }
+
+        @Override
+        public void visit(OpUnnest opUnnest) {
+            if ( !fixedOnly )
+                acc.add(opUnnest.getVar());
+            if ( opUnnest.hasPosVar() )
+                acc.add(opUnnest.getPosVar());
         }
 
         @Override
@@ -451,6 +477,14 @@ public class OpVars
         }
 
         @Override
+        public void visit(OpUnnest opUnnest) {
+            // Unknown position
+            unknownAcc.add(opUnnest.getVar());
+            if ( opUnnest.hasPosVar() )
+                unknownAcc.add(opUnnest.getPosVar());
+        }
+
+        @Override
         public void visit(OpPropFunc opPropFunc) {
             addvars(subjAcc, opPropFunc.getSubjectArgs());
             addvars(objAcc, opPropFunc.getObjectArgs());
@@ -509,6 +543,11 @@ public class OpVars
         @Override
         public void visit(OpExtend opExtend) {
             visitExtendAssign(opExtend);
+        }
+
+        @Override
+        public void visit(OpUnnest opUnnest) {
+            ExprVars.varsMentioned(acc, opUnnest.getExpr());
         }
 
         @Override

@@ -115,6 +115,15 @@ class ApplyElementTransformVisitor implements ElementVisitor {
     }
 
     @Override
+    public void visit(ElementUnnest el) {
+        Var v1 = TransformElementLib.applyVar(el.getVar(), exprTransform) ;
+        Var posVar1 = el.hasPosVar() ? TransformElementLib.applyVar(el.getPosVar(), exprTransform) : null ;
+        Expr expr1 = ExprTransformer.transform(exprTransform, el.getExpr()) ;
+        Element el2 = transform.transform(el, expr1, v1, posVar1) ;
+        push(el2) ;
+    }
+
+    @Override
     public void visit(ElementData el) {
         Element el2 = transform.transform(el);
         push(el2);

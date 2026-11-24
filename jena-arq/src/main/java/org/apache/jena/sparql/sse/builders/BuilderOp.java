@@ -86,6 +86,7 @@ public class BuilderOp
         addBuild(Tags.tagLateral,       buildLateral);
         addBuild(Tags.tagSemiJoin,      buildSemiJoin);
         addBuild(Tags.tagAntiJoin,      buildAntiJoin);
+        addBuild(Tags.tagUnnest,        buildUnnest);
         addBuild(Tags.tagConditional,   buildConditional);
 
         addBuild(Tags.tagToList,        buildToList);
@@ -337,6 +338,17 @@ public class BuilderOp
 		BuilderLib.checkLength(2, list, Tags.tagDatasetNames);
 		Node n = BuilderNode.buildNode(list.get(1));
 		return new OpDatasetNames(n);
+    };
+
+    final protected Build buildUnnest = (ItemList list) -> {
+        // (unnest (?x ?i) expr sub)
+        BuilderLib.checkLength(4, list, "unnest: wanted (unnest (var [posvar]) expr subop)");
+        List<Var> vars = BuilderNode.buildVarList(list.get(1));
+        if ( vars.size() < 1 || vars.size() > 2 )
+            BuilderLib.broken(list, "unnest: wanted one or two variables: "+list.get(1));
+        Expr expr = BuilderExpr.buildExpr(list.get(2));
+        Op sub = build(list, 3);
+        return OpUnnest.create(sub, expr, vars.get(0), vars.size() == 2 ? vars.get(1) : null);
     };
 
     final protected Build buildLateral = (ItemList list) -> {

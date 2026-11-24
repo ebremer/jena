@@ -209,6 +209,11 @@ public interface OpVisitorByType extends OpVisitor
     }
 
     @Override
+    public default void visit(OpUnnest opUnnest) {
+        visit1(opUnnest);
+    }
+
+    @Override
     public default void visit(OpList opList) {
         visitModifer(opList);
     }

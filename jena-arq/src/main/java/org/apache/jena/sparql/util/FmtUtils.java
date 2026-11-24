@@ -21,6 +21,10 @@
 
 package org.apache.jena.sparql.util;
 
+import java.util.List;
+
+import org.apache.jena.sparql.core.Node_SeqGap;
+
 import static org.apache.jena.atlas.lib.Lib.uppercase;
 
 import java.util.regex.Pattern ;
@@ -362,6 +366,29 @@ public class FmtUtils {
             result.append(" ");
             stringForNode(result, t.getObject(), context);
             result.append(" )>>");
+        } else if ( n.isNodeSeq() ) {
+            // RDF sequences
+            List<Node> elts = n.getSeq();
+            if ( elts.isEmpty() ) {
+                result.append("()");
+            } else {
+                result.append("( ");
+                boolean first = true;
+                for ( Node elt : elts ) {
+                    if ( ! first )
+                        result.append(" ");
+                    first = false;
+                    stringForNode(result, elt, context);
+                }
+                result.append(" )");
+            }
+        } else if ( n.isNodeUndef() ) {
+            result.append("undef");
+        } else if ( n instanceof Node_SeqGap gap ) {
+            // RDF sequences: a gap "..." or "...?rest" in a sequence pattern
+            result.append("...");
+            if ( gap.isNamed() )
+                stringForNode(result, gap.getVar(), context);
         } else if ( n.isNodeGraph() ) {
             Log.warn(FmtUtils.class, "Can not turn a graph term node into a string");
             result.append(" { graph }");

@@ -161,6 +161,8 @@ public abstract class OpVisitorByType implements OpVisitor
     @Override
     public void visit(OpUnfold opUnfold)
     { visit1(opUnfold) ; }
+    public void visit(OpUnnest opUnnest)
+    { visit1(opUnnest) ; }
 
     @Override
     public void visit(OpList opList)

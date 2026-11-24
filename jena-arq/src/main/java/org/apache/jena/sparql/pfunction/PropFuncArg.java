@@ -57,8 +57,9 @@ public class PropFuncArg extends PrintSerializableBase
         }
         this.argList = argList ;
         // If the list is zero length, it's rdf:nil. Be careful!
+        // RDF sequences: "()" is the empty sequence term; keep it as the argument.
         if ( argList.isEmpty() )
-            this.arg = NodeConst.nodeNil ;
+            this.arg = ( arg != null && arg.isNodeSeq() ) ? arg : NodeConst.nodeNil ;
     }
 
     public PropFuncArg(List<Node> argList)  { this.argList = argList ; }

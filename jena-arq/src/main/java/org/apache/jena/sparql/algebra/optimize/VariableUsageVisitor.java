@@ -169,6 +169,16 @@ public abstract class VariableUsageVisitor extends OpVisitorBase {
     }
 
     @Override
+    public void visit(OpUnnest opUnnest) {
+        Collection<Var> vars = new ArrayList<>();
+        vars.add(opUnnest.getVar());
+        if ( opUnnest.hasPosVar() )
+            vars.add(opUnnest.getPosVar());
+        ExprVars.varsMentioned(vars, opUnnest.getExpr());
+        action(vars);
+    }
+
+    @Override
     public void visit(OpOrder opOrder) {
         Collection<Var> vars = new ArrayList<>();
         for (SortCondition condition : opOrder.getConditions()) {

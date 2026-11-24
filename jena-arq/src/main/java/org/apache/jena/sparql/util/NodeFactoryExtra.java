@@ -21,7 +21,9 @@
 
 package org.apache.jena.sparql.util ;
 
+import java.util.ArrayList ;
 import java.util.Calendar ;
+import java.util.List ;
 
 import org.apache.jena.atlas.lib.DateTimeUtils ;
 import org.apache.jena.datatypes.xsd.XSDDatatype ;
@@ -80,20 +82,41 @@ public class NodeFactoryExtra {
         if ( !tokenizer.hasNext() )
             throw new RiotException("Empty RDF term") ;
         Token token = tokenizer.next() ;
-        if ( token.hasType(TokenType.L_TRIPLE) ) {
-            // Triple term.
-            Node n = parseTripleTerm(nodeString, tokenizer, pmap);
-            return n;
-        }
-        Node node = token.asNode(pmap) ;
-        if ( node == null )
-            throw new RiotException("Bad RDF Term: " + nodeString) ;
+        Node node = parseTerm(nodeString, tokenizer, token, pmap) ;
         if ( node.isURI() ) {
             // Lightly test for bad URIs.
             String x = node.getURI() ;
             if ( x.indexOf(' ') >= 0 )
                 throw new RiotException("Space(s) in  IRI: " + nodeString) ;
         }
+        return node ;
+    }
+
+    /**
+     * The term at {@code token}: a triple term {@code <<( s p o )>>}, a sequence
+     * {@code ( e1 e2 … )} (rdf-array), {@code undef} being an empty slot inside one,
+     * or a plain RDF term.
+     */
+    private static Node parseTerm(String nodeString, Tokenizer tokenizer, Token token, PrefixMap pmap) {
+        if ( token.hasType(TokenType.L_TRIPLE) )
+            return parseTripleTerm(nodeString, tokenizer, pmap);
+        if ( token.hasType(TokenType.LPAREN) ) {
+            List<Node> elements = new ArrayList<>() ;
+            while ( true ) {
+                if ( !tokenizer.hasNext() )
+                    throw new RiotException("Unclosed sequence: " + nodeString) ;
+                Token t = tokenizer.next() ;
+                if ( t.hasType(TokenType.RPAREN) )
+                    return NodeFactory.createSeqNode(elements) ;
+                if ( t.hasType(TokenType.KEYWORD) && "undef".equalsIgnoreCase(t.getImage()) )
+                    elements.add(Node.UNDEF) ;
+                else
+                    elements.add(parseTerm(nodeString, tokenizer, t, pmap)) ;
+            }
+        }
+        Node node = token.asNode(pmap) ;
+        if ( node == null )
+            throw new RiotException("Bad RDF Term: " + nodeString) ;
         return node ;
     }
 

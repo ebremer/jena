@@ -52,7 +52,7 @@ public class SolverLib {
      */
     public static boolean tripleHasNodeTriple(Triple triple) {
         return triple.getSubject().isTripleTerm()
-               /*|| triple.getPredicate().isNodeTriple()*/
+               /*|| triple.getPredicate().isTripleTerm()*/
                || triple.getObject().isTripleTerm();
     }
 
@@ -61,38 +61,36 @@ public class SolverLib {
      */
     public static boolean quadHasNodeTriple(Quad quad) {
         return quad.getSubject().isTripleTerm()
-               // || triple.getPredicate().isNodeTriple()
-               // || quad.getGraph().isNodeTriple()
+               // || triple.getPredicate().isTripleTerm()
+               // || quad.getGraph().isTripleTerm()
                || quad.getObject().isTripleTerm();
     }
 
     /**
-     * Test whether a triple has a triple term as one of its components
-     * and that the nest triple term has variables.
+     * Test whether a triple has a compound term with variables as one of its
+     * components: a triple term (RDF-star) or a sequence with variables or gaps inside.
      */
     public static boolean tripleHasEmbTripleWithVars(Triple triple) {
-        return isTripleTermWithVars(triple.getSubject())
-               // || isEmbeddedTripleWithVars(triple.getPredicate())
-               || isTripleTermWithVars(triple.getObject());
+        return isCompoundWithVars(triple.getSubject())
+               // || isCompoundWithVars(triple.getPredicate())
+               || isCompoundWithVars(triple.getObject());
     }
 
     /**
-     * Test whether a quad has a triple term as one of its components
-     * and that triple term has variables.
+     * Test whether a quad has a compound term with variables as one of its
+     * components: a triple term (RDF-star) or a sequence with variables or gaps inside.
      */
     public static boolean quadHasEmbTripleWithVars(Quad quad) {
-        return isTripleTermWithVars(quad.getSubject())
-               // || isEmbeddedTripleWithVars(triple.getPredicate())
-               // ||isEmbeddedTripleWithVars(triple.getGraph())
-               || isTripleTermWithVars(quad.getObject());
+        return isCompoundWithVars(quad.getSubject())
+               // || isCompoundWithVars(triple.getPredicate())
+               // || isCompoundWithVars(triple.getGraph())
+               || isCompoundWithVars(quad.getObject());
     }
 
-    private static boolean isTripleTermWithVars(Node node) {
-        if ( ! node.isTripleTerm() )
-            return false;
-        if ( node.getTriple().isConcrete() )
-            return false;
-        return true;
+    private static boolean isCompoundWithVars(Node node) {
+        if ( node.isTripleTerm() || node.isNodeSeq() )
+            return ! node.isConcrete();
+        return false;
     }
 
     /** Test equality of two concrete teams. */
@@ -101,16 +99,36 @@ public class SolverLib {
     }
 
     /**
-     * Convert a pattern node into ANY, or leave as a constant term. Any Embedded
-     * triple term with a variable, that is {@code {@literal <<?var>>}} becomes an
-     * ANY.
+     * The term to find in the data for a pattern node {@code xNode}, given it after
+     * substitution, {@code tNode}. A sequence pattern is not looked up by its
+     * substituted form: {@code ( ?x )} with {@code ?x} bound also matches
+     * {@code ( undef )}.
+     */
+    public static Node nodeTopLevel(Node xNode, Node tNode) {
+        return hasSeqWithVars(xNode) ? Node.ANY : nodeTopLevel(tNode);
+    }
+
+    private static boolean hasSeqWithVars(Node node) {
+        if ( node.isNodeSeq() )
+            return ! node.isConcrete();
+        if ( node.isTripleTerm() ) {
+            Triple t = node.getTriple();
+            return hasSeqWithVars(t.getSubject()) || hasSeqWithVars(t.getPredicate()) || hasSeqWithVars(t.getObject());
+        }
+        return false;
+    }
+
+    /**
+     * Convert a pattern node into ANY, or leave as a constant term. Any compound
+     * term with a variable or a gap, that is {@code {@literal <<?var>>}},
+     * {@code (?var)} or {@code ( ... )}, becomes an ANY.
      */
     public static Node nodeTopLevel(Node node) {
         // Public so TDB code can use it.
         if ( Var.isVar(node) )
             return Node.ANY;
-        if ( node.isTripleTerm() ) { //|| node.isNodeGraph() )
-            if ( ! node.getTriple().isConcrete() )
+        if ( node.isTripleTerm() || node.isNodeSeq() ) { //|| node.isNodeGraph() )
+            if ( ! node.isConcrete() )
                 // Nested variables.
                 return Node.ANY;
         }

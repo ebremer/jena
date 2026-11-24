@@ -51,6 +51,7 @@ public interface Evaluator
     public Table assign(Table table, VarExprList exprs);
     public Table extend(Table table, VarExprList exprs);
     public Table unfold(Table table, Expr expr, Var var1, Var var2);
+    public Table unnest(Table table, Expr expr, Var var, Var posVar);
 
     public Table join(Table tableLeft, Table tableRight);
     public Table leftJoin(Table tableLeft, Table tableRight, ExprList expr);
