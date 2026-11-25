@@ -53,6 +53,20 @@ Each of these follows Jena 6.x, where 5.0 and 6.x differ.
     and `Scripts_RdfArrayContribSPARQL`. Its SPARQL tests parse as ARQ syntax, decided by the manifest's
     location.
 
+## Added on this branch
+
+- **Filters through `UNNEST`.** `TransformFilterPlacement` places filters through `(unnest …)` as it
+  does through `(extend …)`:
+  - a filter goes into the subop when the subop binds all its variables;
+  - otherwise it goes right after the unnest, once the unnest has bound its position variable;
+  - the member variable does not count, as in `OpVars.fixedVars`: an empty slot leaves it unbound, and a
+    later step can still bind it.
+
+  In jena-array, `(unnest …)` stopped placement, so a `FILTER` on a position waited for every later
+  `UNNEST` in the group. One example picks one pixel from each of 50 images of 256 × 256 × 3 values, then
+  takes its three channels apart. Unplaced, it made 88 million rows before any filter ran and took 42 s;
+  placed, it takes 0.07 s. Tests: `TestTransformFilterPlacement.place_unnest_*`.
+
 ## Status
 
 - **The rdf-array suites pass on 6.3.0:**

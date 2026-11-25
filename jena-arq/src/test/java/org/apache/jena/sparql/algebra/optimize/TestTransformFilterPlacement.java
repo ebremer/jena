@@ -461,6 +461,45 @@ public class TestTransformFilterPlacement {
         test(x1, x2);
     }
 
+    // rdf-array: (unnest (?member ?position) expr subop) places as (extend) does,
+    // counting the position as bound and the member as not (an empty slot leaves it unbound).
+
+    @Test public void place_unnest_01() {
+        // Into the subop.
+        test("(filter (= ?x 1) (unnest (?e ?i) ?s (bgp (?a ?p ?s) (?a ?q ?x)) ))",
+             "(unnest (?e ?i) ?s (filter (= ?x 1) (bgp (?a ?p ?s) (?a ?q ?x)) ))");
+    }
+
+    @Test public void place_unnest_02() {
+        // Into the subop, no position variable.
+        test("(filter (= ?x 1) (unnest (?e) ?s (bgp (?a ?p ?s) (?a ?q ?x)) ))",
+             "(unnest (?e) ?s (filter (= ?x 1) (bgp (?a ?p ?s) (?a ?q ?x)) ))");
+    }
+
+    @Test public void place_unnest_03() {
+        // A position goes right after its own unnest, before the next one runs.
+        test("(filter ((= ?i 2) (= ?j 3)) (unnest (?f ?j) ?e (unnest (?e ?i) ?s (bgp (?a ?p ?s)) )))",
+             "(filter (= ?j 3) (unnest (?f ?j) ?e (filter (= ?i 2) (unnest (?e ?i) ?s (bgp (?a ?p ?s)) ))))");
+    }
+
+    @Test public void place_unnest_04() {
+        // A member is not placed at its unnest: it stays outside.
+        test("(filter ((= ?i 2) (= ?e 5)) (unnest (?f ?j) ?e (unnest (?e ?i) ?s (bgp (?a ?p ?s)) )))",
+             "(filter (= ?e 5) (unnest (?f ?j) ?e (filter (= ?i 2) (unnest (?e ?i) ?s (bgp (?a ?p ?s)) ))))");
+    }
+
+    @Test public void place_unnest_05() {
+        // A member a later step can bind (after an empty slot) is placed at that step, not at the unnest.
+        test("(filter (= ?e 5) (sequence (unnest (?e ?i) ?s (bgp (?a ?p ?s))) (bgp (?b ?q ?e)) ))",
+             "(sequence (unnest (?e ?i) ?s (bgp (?a ?p ?s))) (filter (= ?e 5) (bgp (?b ?q ?e)) ))");
+    }
+
+    @Test public void place_unnest_06() {
+        // The same in a sequence: a position is placed at its unnest.
+        test("(filter (= ?i 2) (sequence (unnest (?e ?i) ?s (bgp (?a ?p ?s))) (bgp (?b ?q ?e)) ))",
+             "(sequence (filter (= ?i 2) (unnest (?e ?i) ?s (bgp (?a ?p ?s)))) (bgp (?b ?q ?e)) )");
+    }
+
     @Test public void place_assign_01() {
         test("(filter (= ?x 123) (assign ((?z 123)) (bgp (?s ?p ?x)) ))",
              "(assign ((?z 123)) (filter (= ?x 123) (bgp (?s ?p ?x)) ))");

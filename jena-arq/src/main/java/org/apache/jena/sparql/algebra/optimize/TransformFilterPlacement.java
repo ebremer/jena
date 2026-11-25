@@ -218,6 +218,8 @@ public class TransformFilterPlacement extends TransformCopy {
             placement = placeExtend(exprs, (OpExtend)input) ;
         else if ( input instanceof OpAssign )
             placement = placeAssign(exprs, (OpAssign)input) ;
+        else if ( input instanceof OpUnnest )
+            placement = placeUnnest(exprs, (OpUnnest)input) ;
         // Modifiers
 //        else if ( input instanceof OpGroup ) {
 //            placement = noChangePlacement ;
@@ -757,6 +759,42 @@ public class TransformFilterPlacement extends TransformCopy {
         for ( Expr expr : remaining ) {
             Set<Var> exprVars = expr.getVarsMentioned() ;
             if ( subVars.containsAll(exprVars) )
+                wrapping.add(expr) ;
+            else
+                unplaced.add(expr) ;
+        }
+
+        Op result = input.copy(subOp) ;
+        if ( ! wrapping.isEmpty() )
+            result = OpFilter.filterBy(wrapping, result) ;
+        return result(result, unplaced) ;
+    }
+
+    /**
+     * (filter (unnest ...)), as for (extend): push into the subop what it covers,
+     * and wrap the unnest in what is covered once it has bound its position. Its
+     * member variable does not count: an empty slot leaves it unbound, and a later
+     * step can still bind it (OpVars.fixedVars leaves it out for the same reason).
+     * Without this, a FILTER on an UNNEST's position waited for every later UNNEST
+     * of the group, which multiplied the rows by each sequence's length first.
+     */
+    private Placement placeUnnest(ExprList exprs, OpUnnest input) {
+        Op subOp = input.getSubOp() ;
+        ExprList remaining = exprs ;
+        Placement p = transform(exprs, subOp) ;
+        if ( isChange(p) ) {
+            subOp = p.op ;
+            remaining = p.unplaced ;
+        }
+
+        Set<Var> covered = OpVars.fixedVars(subOp) ;
+        if ( input.hasPosVar() )
+            covered.add(input.getPosVar()) ;
+
+        ExprList wrapping = new ExprList() ;
+        ExprList unplaced = new ExprList() ;
+        for ( Expr expr : remaining ) {
+            if ( covered.containsAll(expr.getVarsMentioned()) )
                 wrapping.add(expr) ;
             else
                 unplaced.add(expr) ;
